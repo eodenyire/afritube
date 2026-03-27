@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Search, Upload, Bell, Menu, X, User } from "lucide-react";
+import { Search, Upload, Bell, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const navLinks = [
     { label: "Videos", href: "#videos" },
@@ -68,10 +72,41 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
             <Bell size={20} />
           </Button>
-          <Button size="sm" className="bg-gradient-gold text-primary-foreground font-semibold rounded-full px-4 hover:opacity-90 transition-opacity">
-            <User size={16} className="mr-1" />
-            Sign In
-          </Button>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/")}
+                className="w-8 h-8 rounded-full overflow-hidden border-2 border-primary"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-gold flex items-center justify-center text-primary-foreground text-xs font-bold">
+                    {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut size={18} />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => navigate("/auth")}
+              className="bg-gradient-gold text-primary-foreground font-semibold rounded-full px-4 hover:opacity-90 transition-opacity"
+            >
+              <User size={16} className="mr-1" />
+              Sign In
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
