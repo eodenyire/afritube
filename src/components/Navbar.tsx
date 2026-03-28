@@ -66,7 +66,7 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-2 ml-4">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/upload")}>
             <Upload size={20} />
           </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
