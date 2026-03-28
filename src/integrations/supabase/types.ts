@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      audio_tracks: {
+        Row: {
+          artist_name: string | null
+          audio_url: string
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          duration: number | null
+          genre: string | null
+          id: string
+          is_published: boolean
+          streams: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist_name?: string | null
+          audio_url: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          is_published?: boolean
+          streams?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist_name?: string | null
+          audio_url?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          is_published?: boolean
+          streams?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          category: string | null
+          comments_count: number
+          content: string
+          cover_url: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          is_published: boolean
+          likes: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          comments_count?: number
+          content?: string
+          cover_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean
+          likes?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          comments_count?: number
+          content?: string
+          cover_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean
+          likes?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -53,6 +146,51 @@ export type Database = {
           updated_at?: string
           user_id?: string
           watch_hours?: number
+        }
+        Relationships: []
+      }
+      videos: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          duration: number | null
+          id: string
+          is_published: boolean
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          video_url: string
+          views: number
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_published?: boolean
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          video_url: string
+          views?: number
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_published?: boolean
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_url?: string
+          views?: number
         }
         Relationships: []
       }

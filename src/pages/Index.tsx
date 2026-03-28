@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
@@ -56,6 +57,7 @@ const fadeUp = {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -83,7 +85,7 @@ const Index = () => {
                 <Button size="lg" className="bg-gradient-gold text-primary-foreground font-semibold rounded-full px-8 hover:opacity-90 transition-opacity shadow-gold">
                   <Play size={18} className="mr-2" fill="currentColor" /> Start Watching
                 </Button>
-                <Button size="lg" variant="outline" className="rounded-full px-8 border-border text-foreground hover:bg-secondary">
+                <Button size="lg" variant="outline" className="rounded-full px-8 border-border text-foreground hover:bg-secondary" onClick={() => navigate("/upload")}>
                   <Upload size={18} className="mr-2" /> Upload Content
                 </Button>
               </div>
