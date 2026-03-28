@@ -150,7 +150,7 @@ const Dashboard = () => {
                 <DollarSign size={18} className="text-primary" />
                 <h2 className="font-display font-semibold text-foreground">Monetization Progress</h2>
                 {isEligible && (
-                  <span className="ml-auto text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                  <span className="ml-auto text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary">
                     Eligible ✓
                   </span>
                 )}

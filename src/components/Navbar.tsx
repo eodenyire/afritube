@@ -76,7 +76,7 @@ const Navbar = () => {
           {user ? (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/dashboard")}
                 className="w-8 h-8 rounded-full overflow-hidden border-2 border-primary"
               >
                 {profile?.avatar_url ? (
