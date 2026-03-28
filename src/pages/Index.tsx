@@ -57,6 +57,7 @@ const fadeUp = {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
