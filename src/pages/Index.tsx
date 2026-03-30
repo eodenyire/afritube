@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import VideoCard from "@/components/VideoCard";
 import AudioCard from "@/components/AudioCard";
@@ -24,31 +27,47 @@ import blog2 from "@/assets/blog-2.jpg";
 
 const videoCategories = ["Trending", "Music", "Comedy", "Tech", "Food", "Travel", "Education", "Sports"];
 
-const videos = [
+// Fallback sample data shown when DB is empty
+const sampleVideos = [
   { title: "Afrobeats Live: Lagos to the World Tour 2025", channel: "Afro Vibes", views: "1.2M", duration: "45:20", thumbnail: thumb1, avatar: album2, isMonetized: true },
   { title: "How to Cook the Perfect Jollof Rice — The Ultimate Guide", channel: "Chef Amara", views: "845K", duration: "18:33", thumbnail: thumb2, avatar: album1, isMonetized: true },
   { title: "Building Africa's Next Tech Unicorn — Startup Documentary", channel: "TechAfrika", views: "320K", duration: "1:02:15", thumbnail: thumb3, avatar: album3, isMonetized: false },
   { title: "Serengeti Sunrise — 4K Wildlife Documentary", channel: "NatureAfrica", views: "2.1M", duration: "52:08", thumbnail: thumb4, avatar: album4, isMonetized: true },
 ];
 
-const audios = [
+const sampleAudios = [
   { title: "Midnight in Lagos", artist: "Ayo Beats", cover: album1, streams: "3.2M", duration: "3:45" },
   { title: "Sahara Dreams", artist: "Nala Queen", cover: album2, streams: "1.8M", duration: "4:12" },
   { title: "Amapiano Sunrise", artist: "DJ Mzansi", cover: album3, streams: "5.1M", duration: "5:30" },
   { title: "Highlife Gold", artist: "Kwame & The Elders", cover: album4, streams: "890K", duration: "6:15" },
 ];
 
-const blogs = [
+const sampleBlogs = [
   { title: "The Rise of African Street Fashion: From Lagos to Paris", excerpt: "How African designers are reshaping global fashion with bold prints, sustainable materials, and unapologetic creativity.", author: "Zara Okafor", avatar: album2, cover: blog1, readTime: "5 min read", likes: 234, comments: 42, category: "Fashion" },
   { title: "Inside Africa's Digital Art Revolution", excerpt: "A new generation of African digital artists is blending tradition with technology to create stunning visual narratives.", author: "Kofi Mensah", avatar: album4, cover: blog2, readTime: "8 min read", likes: 189, comments: 31, category: "Art & Culture" },
 ];
 
-const creators = [
+const sampleCreators = [
   { name: "Afro Vibes", avatar: album2, subscribers: 150, watchHours: 2400, isEligible: true },
   { name: "Chef Amara", avatar: album1, subscribers: 87, watchHours: 650, isEligible: false },
   { name: "DJ Mzansi", avatar: album3, subscribers: 120, watchHours: 1100, isEligible: true },
   { name: "Kofi Mensah", avatar: album4, subscribers: 45, watchHours: 320, isEligible: false },
 ];
+
+const formatViews = (n: number) => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+};
+
+const formatDuration = (seconds: number | null) => {
+  if (!seconds) return "0:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -58,6 +77,108 @@ const fadeUp = {
 
 const Index = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [dbVideos, setDbVideos] = useState<any[]>([]);
+  const [dbAudios, setDbAudios] = useState<any[]>([]);
+  const [dbBlogs, setDbBlogs] = useState<any[]>([]);
+  const [dbCreators, setDbCreators] = useState<any[]>([]);
+  // Profile lookup cache keyed by user_id
+  const [profiles, setProfiles] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      // Fetch everything in parallel
+      const [videosRes, audiosRes, blogsRes, creatorsRes] = await Promise.all([
+        supabase.from("videos").select("*").eq("is_published", true).order("views", { ascending: false }).limit(8),
+        supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
+        supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
+        supabase.from("profiles").select("*").eq("is_creator", true).order("subscriber_count", { ascending: false }).limit(4),
+      ]);
+
+      const videos = videosRes.data ?? [];
+      const audios = audiosRes.data ?? [];
+      const blogs = blogsRes.data ?? [];
+      const creators = creatorsRes.data ?? [];
+
+      // Collect unique user_ids to fetch profiles for content
+      const userIds = new Set<string>();
+      videos.forEach((v) => userIds.add(v.user_id));
+      blogs.forEach((b) => userIds.add(b.user_id));
+
+      if (userIds.size > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url, is_monetized")
+          .in("user_id", Array.from(userIds));
+        const map: Record<string, any> = {};
+        (profs ?? []).forEach((p) => { map[p.user_id] = p; });
+        setProfiles(map);
+      }
+
+      setDbVideos(videos);
+      setDbAudios(audios);
+      setDbBlogs(blogs);
+      setDbCreators(creators);
+      setLoading(false);
+    };
+
+    fetchAll();
+  }, []);
+
+  // Map DB videos to VideoCard props
+  const videoCards = dbVideos.length > 0
+    ? dbVideos.map((v) => {
+        const p = profiles[v.user_id];
+        return {
+          id: v.id,
+          title: v.title,
+          channel: p?.display_name ?? "Unknown",
+          views: formatViews(v.views),
+          duration: formatDuration(v.duration),
+          thumbnail: v.thumbnail_url ?? thumb1,
+          avatar: p?.avatar_url ?? album1,
+          isMonetized: p?.is_monetized ?? false,
+        };
+      })
+    : sampleVideos;
+
+  const audioCards = dbAudios.length > 0
+    ? dbAudios.map((a) => ({
+        title: a.title,
+        artist: a.artist_name ?? "Unknown Artist",
+        cover: a.cover_url ?? album1,
+        streams: formatViews(a.streams),
+        duration: formatDuration(a.duration),
+      }))
+    : [...sampleAudios, ...sampleAudios.slice(0, 2)];
+
+  const blogCards = dbBlogs.length > 0
+    ? dbBlogs.map((b) => {
+        const p = profiles[b.user_id];
+        return {
+          title: b.title,
+          excerpt: b.excerpt ?? b.content.slice(0, 120) + "…",
+          author: p?.display_name ?? "Unknown",
+          avatar: p?.avatar_url ?? album1,
+          cover: b.cover_url ?? blog1,
+          readTime: `${Math.max(1, Math.ceil((b.content?.length ?? 0) / 1000))} min read`,
+          likes: b.likes,
+          comments: b.comments_count,
+          category: b.category ?? "General",
+        };
+      })
+    : sampleBlogs;
+
+  const creatorCards = dbCreators.length > 0
+    ? dbCreators.map((c) => ({
+        name: c.display_name ?? "Creator",
+        avatar: c.avatar_url ?? album1,
+        subscribers: c.subscriber_count,
+        watchHours: Number(c.watch_hours),
+        isEligible: c.is_monetized,
+      }))
+    : sampleCreators;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -104,38 +225,74 @@ const Index = () => {
         <motion.section {...fadeUp} id="videos">
           <SectionHeader icon={<Play size={22} />} title="Trending Videos" subtitle="The hottest content from across Africa" />
           <CategoryPills categories={videoCategories} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-            {videos.map((v) => (
-              <VideoCard key={v.title} {...v} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-video rounded-xl" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+              {videoCards.map((v) => (
+                <VideoCard key={v.title} {...v} />
+              ))}
+            </div>
+          )}
         </motion.section>
 
         {/* Audio */}
         <motion.section {...fadeUp} id="music">
           <SectionHeader icon={<Music size={22} />} title="Hot Tracks" subtitle="Afrobeats, Amapiano, Highlife and more" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {[...audios, ...audios.slice(0, 2)].map((a, i) => (
-              <AudioCard key={`${a.title}-${i}`} {...a} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {[1,2,3,4,5,6].map(i => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-square rounded-xl" />
+                  <Skeleton className="h-3 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {audioCards.map((a, i) => (
+                <AudioCard key={`${a.title}-${i}`} {...a} />
+              ))}
+            </div>
+          )}
         </motion.section>
 
         {/* Blogs */}
         <motion.section {...fadeUp} id="blogs">
           <SectionHeader icon={<BookOpen size={22} />} title="Featured Stories" subtitle="Voices, opinions, and stories from the continent" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {blogs.map((b) => (
-              <BlogCard key={b.title} {...b} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1,2].map(i => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-[16/9] rounded-xl" />
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {blogCards.map((b) => (
+                <BlogCard key={b.title} {...b} />
+              ))}
+            </div>
+          )}
         </motion.section>
 
         {/* Creator Monetization */}
         <motion.section {...fadeUp} id="creators">
           <SectionHeader icon={<TrendingUp size={22} />} title="Creator Hub" subtitle="Track your progress to monetization — 100 subscribers & 1,000 watch hours" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {creators.map((c) => (
+            {creatorCards.map((c) => (
               <CreatorBadge key={c.name} {...c} />
             ))}
           </div>
