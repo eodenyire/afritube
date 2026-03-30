@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import { Eye, Clock, ThumbsUp, Share2, User } from "lucide-react";
+import SubscribeButton from "@/components/SubscribeButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -219,9 +220,7 @@ const Watch = () => {
                   {formatViews(creator?.subscriber_count ?? 0)} subscribers
                 </span>
               </div>
-              <Button size="sm" className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90">
-                Subscribe
-              </Button>
+              <SubscribeButton creatorUserId={video.user_id} />
             </div>
 
             {/* Description */}

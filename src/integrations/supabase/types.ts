@@ -149,6 +149,27 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          creator_id: string
+          id: string
+          subscriber_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          id?: string
+          subscriber_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          id?: string
+          subscriber_id?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           category: string | null
