@@ -220,9 +220,7 @@ const Watch = () => {
                   {formatViews(creator?.subscriber_count ?? 0)} subscribers
                 </span>
               </div>
-              <Button size="sm" className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90">
-                Subscribe
-              </Button>
+              <SubscribeButton creatorUserId={video.user_id} />
             </div>
 
             {/* Description */}
