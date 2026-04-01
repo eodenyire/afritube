@@ -232,6 +232,9 @@ const Watch = () => {
                 </p>
               </div>
             )}
+
+            {/* Comments */}
+            <VideoComments videoId={video.id} />
           </motion.div>
 
           {/* Related Videos Sidebar */}
