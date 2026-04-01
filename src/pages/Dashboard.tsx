@@ -132,11 +132,7 @@ const Dashboard = () => {
               {profile?.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{profile.bio}</p>}
             </div>
             <div className="flex gap-2">
-              <EditProfileDialog onUpdated={() => {
-                // Refresh the auth context profile
-                const { refreshProfile } = useAuth();
-                refreshProfile();
-              }} />
+              <EditProfileDialog onUpdated={refreshProfile} />
               <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/upload")}>
                 <Upload size={14} /> Upload
               </Button>
