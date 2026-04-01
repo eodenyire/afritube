@@ -141,16 +141,17 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="pt-2">
-                <div className="flex items-center rounded-full border border-border bg-secondary">
+                <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("mq") as HTMLInputElement).value; if (q.trim()) { setMobileOpen(false); navigate(`/search?q=${encodeURIComponent(q.trim())}`); } }} className="flex items-center rounded-full border border-border bg-secondary">
                   <input
+                    name="mq"
                     type="text"
                     placeholder="Search..."
                     className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
                   />
-                  <button className="px-4 py-2 text-muted-foreground">
+                  <button type="submit" className="px-4 py-2 text-muted-foreground">
                     <Search size={18} />
                   </button>
-                </div>
+                </form>
               </div>
             </div>
           </motion.div>
