@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import EditProfileDialog from "@/components/EditProfileDialog";
 
 interface VideoItem {
   id: string;
@@ -50,7 +51,7 @@ const fadeUp = {
 };
 
 const Dashboard = () => {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -130,9 +131,12 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">{user.email}</p>
               {profile?.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{profile.bio}</p>}
             </div>
-            <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/upload")}>
-              <Upload size={14} /> Upload
-            </Button>
+            <div className="flex gap-2">
+              <EditProfileDialog onUpdated={refreshProfile} />
+              <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/upload")}>
+                <Upload size={14} /> Upload
+              </Button>
+            </div>
           </div>
 
           {/* Stats cards */}
