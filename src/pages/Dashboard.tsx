@@ -51,7 +51,7 @@ const fadeUp = {
 };
 
 const Dashboard = () => {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [videos, setVideos] = useState<VideoItem[]>([]);
