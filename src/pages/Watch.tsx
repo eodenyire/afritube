@@ -166,6 +166,7 @@ const Watch = () => {
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
               <video
+                ref={videoRef}
                 src={video.video_url}
                 controls
                 autoPlay
