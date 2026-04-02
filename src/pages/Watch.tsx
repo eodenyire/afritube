@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
-import { Eye, Clock, ThumbsUp, Share2, User } from "lucide-react";
+import { Eye, Clock, Share2, User } from "lucide-react";
+import VideoReactions from "@/components/VideoReactions";
 import SubscribeButton from "@/components/SubscribeButton";
 import VideoComments from "@/components/VideoComments";
 import { Button } from "@/components/ui/button";
@@ -193,9 +194,7 @@ const Watch = () => {
                 )}
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" className="rounded-full gap-1.5">
-                  <ThumbsUp size={16} /> Like
-                </Button>
+                <VideoReactions videoId={video.id} />
                 <Button variant="secondary" size="sm" className="rounded-full gap-1.5">
                   <Share2 size={16} /> Share
                 </Button>
