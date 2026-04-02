@@ -242,11 +242,47 @@ export type Database = {
         }
         Relationships: []
       }
+      watch_history: {
+        Row: {
+          created_at: string
+          creator_id: string
+          id: string
+          video_id: string
+          viewer_id: string | null
+          watch_seconds: number
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          id?: string
+          video_id: string
+          viewer_id?: string | null
+          watch_seconds?: number
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          id?: string
+          video_id?: string
+          viewer_id?: string | null
+          watch_seconds?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      add_watch_time: {
+        Args: {
+          p_creator_id: string
+          p_seconds?: number
+          p_video_id: string
+          p_viewer_id?: string
+        }
+        Returns: undefined
+      }
       check_monetization_eligibility: {
         Args: { p_user_id: string }
         Returns: boolean
