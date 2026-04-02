@@ -197,6 +197,30 @@ export type Database = {
         }
         Relationships: []
       }
+      video_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction_type: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction_type: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           category: string | null
