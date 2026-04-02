@@ -200,7 +200,6 @@ const Watch = () => {
                 </Button>
               </div>
             </div>
-            </div>
 
             {/* Creator Info */}
             <div className="flex items-center gap-3 mt-5 p-4 rounded-xl bg-card border border-border">
