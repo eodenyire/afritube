@@ -36,6 +36,13 @@ const Watch = () => {
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useWatchTimeTracker({
+    videoId: id ?? "",
+    creatorUserId: video?.user_id ?? "",
+    videoElement: videoRef.current,
+  });
 
   useEffect(() => {
     if (!id) return;
