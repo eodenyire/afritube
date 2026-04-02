@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -8,6 +8,7 @@ import VideoComments from "@/components/VideoComments";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
+import { useWatchTimeTracker } from "@/hooks/useWatchTimeTracker";
 
 interface Video {
   id: string;
@@ -35,6 +36,13 @@ const Watch = () => {
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useWatchTimeTracker({
+    videoId: id ?? "",
+    creatorUserId: video?.user_id ?? "",
+    videoElement: videoRef.current,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -158,6 +166,7 @@ const Watch = () => {
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
               <video
+                ref={videoRef}
                 src={video.video_url}
                 controls
                 autoPlay
