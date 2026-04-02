@@ -194,12 +194,11 @@ const Watch = () => {
                 )}
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" className="rounded-full gap-1.5">
-                  <ThumbsUp size={16} /> Like
-                </Button>
+                <VideoReactions videoId={video.id} />
                 <Button variant="secondary" size="sm" className="rounded-full gap-1.5">
                   <Share2 size={16} /> Share
                 </Button>
+              </div>
               </div>
             </div>
 
