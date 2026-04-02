@@ -11,6 +11,7 @@ import Upload from "./pages/Upload.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Watch from "./pages/Watch.tsx";
 import Search from "./pages/Search.tsx";
+import CreatorProfile from "./pages/CreatorProfile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/watch/:id" element={<Watch />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/creator/:userId" element={<CreatorProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
