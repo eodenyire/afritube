@@ -199,7 +199,7 @@ const Watch = () => {
                   <Share2 size={16} /> Share
                 </Button>
               </div>
-              </div>
+            </div>
             </div>
 
             {/* Creator Info */}
