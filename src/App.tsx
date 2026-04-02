@@ -11,6 +11,7 @@ import Upload from "./pages/Upload.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Watch from "./pages/Watch.tsx";
 import Search from "./pages/Search.tsx";
+import CreatorProfile from "./pages/CreatorProfile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
