@@ -216,9 +216,9 @@ const Watch = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground text-sm truncate">
+                  <Link to={`/creator/${video.user_id}`} className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors">
                     {creator?.display_name ?? "Unknown Creator"}
-                  </span>
+                  </Link>
                   {creator?.is_monetized && (
                     <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
                       MONETIZED
