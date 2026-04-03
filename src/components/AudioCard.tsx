@@ -1,7 +1,8 @@
-import { Play, Pause, Heart } from "lucide-react";
+import { Play, Pause, Heart, MoreVertical } from "lucide-react";
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import VideoContextMenu from "./VideoContextMenu";
 
 interface AudioCardProps {
   id?: string;
@@ -18,6 +19,7 @@ const AudioCard = ({ id, title, artist, cover, streams, duration, audioUrl }: Au
   const [playing, setPlaying] = useState(false);
   const [realDuration, setRealDuration] = useState<string>(duration);
   const [streamCount, setStreamCount] = useState<string>(streams);
+  const [menuOpen, setMenuOpen] = useState(false);
   const hasCountedRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -96,7 +98,22 @@ const AudioCard = ({ id, title, artist, cover, streams, duration, audioUrl }: Au
       </div>
       <h3 className="font-medium text-sm text-foreground truncate">{title}</h3>
       <p className="text-xs text-muted-foreground mt-0.5">{artist}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{streamCount} streams • {realDuration}</p>
+      <div className="flex items-center justify-between mt-0.5">
+        <p className="text-xs text-muted-foreground">{streamCount} streams • {realDuration}</p>
+        <button
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <MoreVertical size={13} />
+        </button>
+      </div>
+      {menuOpen && (
+        <VideoContextMenu
+          audioId={id}
+          title={title}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
     </motion.div>
   );
 };
