@@ -1,6 +1,4 @@
-# 📄 Afritube Documentation Index
-
----
+# <img src="public/fav.png" width="35" height="35" style="vertical-align:middle;margin-right:-8px"/> AfriTube: Documentation Index
 
 ## 1️⃣ Overview
 
