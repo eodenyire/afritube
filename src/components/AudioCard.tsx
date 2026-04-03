@@ -1,18 +1,69 @@
 import { Play, Pause, Heart } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AudioCardProps {
+  id?: string;
   title: string;
   artist: string;
   cover: string;
   streams: string;
   duration: string;
+  audioUrl?: string;
 }
 
-const AudioCard = ({ title, artist, cover, streams, duration }: AudioCardProps) => {
+const AudioCard = ({ id, title, artist, cover, streams, duration, audioUrl }: AudioCardProps) => {
   const [liked, setLiked] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [realDuration, setRealDuration] = useState<string>(duration);
+  const [streamCount, setStreamCount] = useState<string>(streams);
+  const hasCountedRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!audioUrl) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => setPlaying(false);
+      audioRef.current.onloadedmetadata = () => {
+        if (!audioRef.current) return;
+        const secs = Math.round(audioRef.current.duration);
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        setRealDuration(`${m}:${s.toString().padStart(2, "0")}`);
+      };
+      audioRef.current.ontimeupdate = () => {
+        // Count a stream after 30 seconds of playback (or full track if shorter)
+        if (!audioRef.current || hasCountedRef.current) return;
+        const threshold = Math.min(30, audioRef.current.duration * 0.5);
+        if (audioRef.current.currentTime >= threshold) {
+          hasCountedRef.current = true;
+          // Increment in DB
+          if (id) {
+            supabase.rpc("increment_streams", { track_id: id }).then(() => {
+              // Update display count locally
+              setStreamCount((prev) => {
+                const raw = parseFloat(prev.replace(/[KM]/g, "")) *
+                  (prev.includes("M") ? 1_000_000 : prev.includes("K") ? 1_000 : 1);
+                const next = raw + 1;
+                if (next >= 1_000_000) return `${(next / 1_000_000).toFixed(1)}M`;
+                if (next >= 1_000) return `${(next / 1_000).toFixed(1)}K`;
+                return next.toString();
+              });
+            });
+          }
+        }
+      };
+    }
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setPlaying(!playing);
+  };
 
   return (
     <motion.div
@@ -25,7 +76,7 @@ const AudioCard = ({ title, artist, cover, streams, duration }: AudioCardProps) 
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end p-3">
           <div className="flex items-center justify-between w-full opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              onClick={(e) => { e.stopPropagation(); setPlaying(!playing); }}
+              onClick={togglePlay}
               className="w-10 h-10 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity"
             >
               {playing ? (
@@ -45,7 +96,7 @@ const AudioCard = ({ title, artist, cover, streams, duration }: AudioCardProps) 
       </div>
       <h3 className="font-medium text-sm text-foreground truncate">{title}</h3>
       <p className="text-xs text-muted-foreground mt-0.5">{artist}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{streams} streams • {duration}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{streamCount} streams • {realDuration}</p>
     </motion.div>
   );
 };

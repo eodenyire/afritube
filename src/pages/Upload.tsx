@@ -132,6 +132,15 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
 
+  const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
+    new Promise((resolve) => {
+      const el = document.createElement(type) as HTMLVideoElement | HTMLAudioElement;
+      const url = URL.createObjectURL(file);
+      el.src = url;
+      el.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(Math.round(el.duration)); };
+      el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
+    });
+
   const handleSubmit = async () => {
     if (!videoFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and video file are required.", variant: "destructive" });
@@ -139,6 +148,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
     }
     setUploading(true);
     try {
+      const duration = await getFileDuration(videoFile, "video");
+
       const videoPath = `${userId}/${Date.now()}-${videoFile.name}`;
       const { error: vErr } = await supabase.storage.from("videos").upload(videoPath, videoFile);
       if (vErr) throw vErr;
@@ -159,6 +170,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
         category,
+        duration,
       });
       if (dbErr) throw dbErr;
 
@@ -211,6 +223,15 @@ function AudioUploadForm({ userId }: { userId: string }) {
   const [description, setDescription] = useState("");
   const [genre, setGenre] = useState("General");
 
+  const getFileDuration = (file: File): Promise<number> =>
+    new Promise((resolve) => {
+      const el = document.createElement("audio");
+      const url = URL.createObjectURL(file);
+      el.src = url;
+      el.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(Math.round(el.duration)); };
+      el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
+    });
+
   const handleSubmit = async () => {
     if (!audioFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and audio file are required.", variant: "destructive" });
@@ -218,6 +239,8 @@ function AudioUploadForm({ userId }: { userId: string }) {
     }
     setUploading(true);
     try {
+      const duration = await getFileDuration(audioFile);
+
       const audioPath = `${userId}/${Date.now()}-${audioFile.name}`;
       const { error: aErr } = await supabase.storage.from("audio").upload(audioPath, audioFile);
       if (aErr) throw aErr;
@@ -239,6 +262,7 @@ function AudioUploadForm({ userId }: { userId: string }) {
         audio_url: audioUrl,
         cover_url: coverUrl,
         genre,
+        duration,
       });
       if (dbErr) throw dbErr;
 

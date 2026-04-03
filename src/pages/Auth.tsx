@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,7 @@ const Auth = () => {
         toast.success("Check your email for a reset link!");
         setMode("login");
       } else if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -42,7 +42,14 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Check your email to confirm your account!");
+        // If session is returned immediately, email confirmation is disabled — log in directly
+        if (data.session) {
+          toast.success("Account created! Welcome to AfriTube.");
+          navigate("/");
+        } else {
+          toast.success("Account created! Check your email to confirm, then sign in.");
+          setMode("login");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -57,8 +64,11 @@ const Auth = () => {
   };
 
   const handleSocialLogin = async (provider: "google" | "apple") => {
-    const { error } = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
     });
     if (error) {
       toast.error(error.message || `Failed to sign in with ${provider}`);

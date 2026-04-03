@@ -144,11 +144,13 @@ const Index = () => {
 
   const audioCards = dbAudios.length > 0
     ? dbAudios.map((a) => ({
+        id: a.id,
         title: a.title,
         artist: a.artist_name ?? "Unknown Artist",
         cover: a.cover_url ?? album1,
         streams: formatViews(a.streams),
         duration: formatDuration(a.duration),
+        audioUrl: a.audio_url,
       }))
     : [...sampleAudios, ...sampleAudios.slice(0, 2)];
 
@@ -303,8 +305,8 @@ const Index = () => {
       <footer className="border-t border-border py-12">
         <div className="max-w-[1440px] mx-auto px-4 md:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-gold flex items-center justify-center font-display font-bold text-primary-foreground">A</div>
+            <div className="flex items-center gap-0">
+              <img src="/favicon.png" alt="AfriTube" className="h-10 w-10 object-contain -mr-2" />
               <span className="font-display font-bold text-lg text-foreground">Afri<span className="text-gradient-gold">Tube</span></span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
