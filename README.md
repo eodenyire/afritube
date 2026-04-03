@@ -1,4 +1,4 @@
-# 🌍 AfriTube: Africa's #1 Content Platform
+# <img src="public/favicon.png" width="28" height="28" style="vertical-align:middle"/> AfriTube: Africa's #1 Content Platform
 
 **AfriTube** is a high-performance, decentralized-style content hub designed to empower African creators. It merges video streaming, music discovery, and micro-blogging into a single ecosystem with a built-in path to monetization.
 
