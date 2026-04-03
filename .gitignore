@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.*
+!.env.example
+!mobile/.env.example
+
+# Mobile
+mobile/node_modules
+mobile/.expo
