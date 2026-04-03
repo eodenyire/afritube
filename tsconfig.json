@@ -1,6 +1,6 @@
 {
+  // TypeScript project references config for AfriTube
   "compilerOptions": {
-    "allowJs": true,
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,

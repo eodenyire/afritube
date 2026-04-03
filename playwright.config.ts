@@ -1,3 +1,4 @@
+// Playwright config for AfriTube E2E tests
 import { createLovableConfig } from "lovable-agent-playwright-config/config";
 
 export default createLovableConfig({

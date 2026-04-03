@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
+// Port: 8080 | HMR overlay disabled for cleaner DX
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
