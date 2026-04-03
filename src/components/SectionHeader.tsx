@@ -6,9 +6,10 @@ interface SectionHeaderProps {
   title: string;
   subtitle?: string;
   accentClass?: string;
+  onSeeAll?: () => void;
 }
 
-const SectionHeader = ({ icon, title, subtitle, accentClass = "text-gradient-gold" }: SectionHeaderProps) => {
+const SectionHeader = ({ icon, title, subtitle, accentClass = "text-gradient-gold", onSeeAll }: SectionHeaderProps) => {
   return (
     <div className="flex items-end justify-between mb-6">
       <div>
@@ -18,9 +19,11 @@ const SectionHeader = ({ icon, title, subtitle, accentClass = "text-gradient-gol
         </div>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </div>
-      <button className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        See all <ChevronRight size={16} />
-      </button>
+      {onSeeAll && (
+        <button onClick={onSeeAll} className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          See all <ChevronRight size={16} />
+        </button>
+      )}
     </div>
   );
 };

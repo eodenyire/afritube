@@ -82,51 +82,50 @@ const Index = () => {
   const [dbAudios, setDbAudios] = useState<any[]>([]);
   const [dbBlogs, setDbBlogs] = useState<any[]>([]);
   const [dbCreators, setDbCreators] = useState<any[]>([]);
-  // Profile lookup cache keyed by user_id
+  const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const fetchAll = async () => {
-      // Fetch everything in parallel
-      const [videosRes, audiosRes, blogsRes, creatorsRes] = await Promise.all([
+      const [videosRes, audiosRes, blogsRes] = await Promise.all([
         supabase.from("videos").select("*").eq("is_published", true).order("views", { ascending: false }).limit(8),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
-        supabase.from("profiles").select("*").eq("is_creator", true).order("subscriber_count", { ascending: false }).limit(4),
       ]);
 
       const videos = videosRes.data ?? [];
       const audios = audiosRes.data ?? [];
       const blogs = blogsRes.data ?? [];
-      const creators = creatorsRes.data ?? [];
 
-      // Collect unique user_ids to fetch profiles for content
+      // Collect all unique user_ids from content
       const userIds = new Set<string>();
       videos.forEach((v) => userIds.add(v.user_id));
+      audios.forEach((a) => userIds.add(a.user_id));
       blogs.forEach((b) => userIds.add(b.user_id));
 
       if (userIds.size > 0) {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url, is_monetized")
+          .select("user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours")
           .in("user_id", Array.from(userIds));
         const map: Record<string, any> = {};
         (profs ?? []).forEach((p) => { map[p.user_id] = p; });
         setProfiles(map);
+        // Use these profiles as creators
+        setDbCreators(profs ?? []);
       }
 
       setDbVideos(videos);
       setDbAudios(audios);
       setDbBlogs(blogs);
-      setDbCreators(creators);
       setLoading(false);
     };
 
     fetchAll();
   }, []);
 
-  // Map DB videos to VideoCard props
-  const videoCards = dbVideos.length > 0
+  // Map DB videos to VideoCard props — filter by active category
+  const allVideoCards = dbVideos.length > 0
     ? dbVideos.map((v) => {
         const p = profiles[v.user_id];
         return {
@@ -138,9 +137,14 @@ const Index = () => {
           thumbnail: v.thumbnail_url ?? thumb1,
           avatar: p?.avatar_url ?? album1,
           isMonetized: p?.is_monetized ?? false,
+          category: v.category,
         };
       })
-    : sampleVideos;
+    : sampleVideos.map((v) => ({ ...v, category: "Trending" }));
+
+  const videoCards = activeVideoCategory === "Trending"
+    ? allVideoCards.slice(0, 8)
+    : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
 
   const audioCards = dbAudios.length > 0
     ? dbAudios.map((a) => ({
@@ -172,14 +176,16 @@ const Index = () => {
     : sampleBlogs;
 
   const creatorCards = dbCreators.length > 0
-    ? dbCreators.map((c) => ({
+    ? dbCreators.slice(0, 4).map((c) => ({
         name: c.display_name ?? "Creator",
         avatar: c.avatar_url ?? album1,
-        subscribers: c.subscriber_count,
-        watchHours: Number(c.watch_hours),
-        isEligible: c.is_monetized,
+        subscribers: c.subscriber_count ?? 0,
+        watchHours: Number(c.watch_hours ?? 0),
+        isEligible: c.is_monetized ?? false,
       }))
     : sampleCreators;
+
+  const hasMoreCreators = dbCreators.length > 4;
 
   return (
     <div className="min-h-screen bg-background">
@@ -225,8 +231,8 @@ const Index = () => {
       <main className="max-w-[1440px] mx-auto px-4 md:px-6 space-y-16 pb-20">
         {/* Videos */}
         <motion.section {...fadeUp} id="videos">
-          <SectionHeader icon={<Play size={22} />} title="Trending Videos" subtitle="The hottest content from across Africa" />
-          <CategoryPills categories={videoCategories} />
+          <SectionHeader icon={<Play size={22} />} title="Trending Videos" subtitle="The hottest content from across Africa" onSeeAll={() => navigate(`/search?type=videos${activeVideoCategory !== "Trending" ? `&q=${activeVideoCategory}` : ""}`)} />
+          <CategoryPills categories={videoCategories} onSelect={setActiveVideoCategory} />
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
               {[1,2,3,4].map(i => (
@@ -236,6 +242,10 @@ const Index = () => {
                   <Skeleton className="h-3 w-1/2" />
                 </div>
               ))}
+            </div>
+          ) : videoCards.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No videos in the "{activeVideoCategory}" category yet.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
@@ -248,7 +258,7 @@ const Index = () => {
 
         {/* Audio */}
         <motion.section {...fadeUp} id="music">
-          <SectionHeader icon={<Music size={22} />} title="Hot Tracks" subtitle="Afrobeats, Amapiano, Highlife and more" />
+          <SectionHeader icon={<Music size={22} />} title="Hot Tracks" subtitle="Afrobeats, Amapiano, Highlife and more" onSeeAll={() => navigate("/search?type=music")} />
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {[1,2,3,4,5,6].map(i => (
@@ -270,7 +280,7 @@ const Index = () => {
 
         {/* Blogs */}
         <motion.section {...fadeUp} id="blogs">
-          <SectionHeader icon={<BookOpen size={22} />} title="Featured Stories" subtitle="Voices, opinions, and stories from the continent" />
+          <SectionHeader icon={<BookOpen size={22} />} title="Featured Stories" subtitle="Voices, opinions, and stories from the continent" onSeeAll={() => navigate("/search?type=blogs")} />
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1,2].map(i => (
@@ -292,7 +302,7 @@ const Index = () => {
 
         {/* Creator Monetization */}
         <motion.section {...fadeUp} id="creators">
-          <SectionHeader icon={<TrendingUp size={22} />} title="Creator Hub" subtitle="Track your progress to monetization — 100 subscribers & 1,000 watch hours" />
+          <SectionHeader icon={<TrendingUp size={22} />} title="Creator Hub" subtitle="Track your progress to monetization — 100 subscribers & 1,000 watch hours" onSeeAll={hasMoreCreators ? () => navigate("/search?type=creators") : undefined} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {creatorCards.map((c) => (
               <CreatorBadge key={c.name} {...c} />
@@ -316,7 +326,7 @@ const Index = () => {
               <a href="#" className="hover:text-foreground transition-colors">Terms</a>
               <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
             </div>
-            <p className="text-xs text-muted-foreground">© 2025 AfriTube. Made with ❤️ for Africa.</p>
+            <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} AfriTube - A product of African Digital Technologies</p>
           </div>
         </div>
       </footer>
