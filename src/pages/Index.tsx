@@ -211,7 +211,7 @@ const Index = () => {
                 Stream videos, discover music, read stories — all from Africa's most vibrant creators. Upload your content and earn from your passion.
               </p>
               <div className="flex flex-wrap gap-3 mt-8">
-                <Button size="lg" className="bg-gradient-gold text-primary-foreground font-semibold rounded-full px-8 hover:opacity-90 transition-opacity shadow-gold">
+                <Button size="lg" className="bg-gradient-gold text-primary-foreground font-semibold rounded-full px-8 hover:opacity-90 transition-opacity shadow-gold" onClick={() => document.getElementById("videos")?.scrollIntoView({ behavior: "smooth" })}>
                   <Play size={18} className="mr-2" fill="currentColor" /> Start Watching
                 </Button>
                 <Button size="lg" variant="outline" className="rounded-full px-8 border-border text-foreground hover:bg-secondary" onClick={() => navigate("/upload")}>
