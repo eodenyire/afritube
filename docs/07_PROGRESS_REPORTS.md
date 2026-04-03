@@ -1,4 +1,4 @@
-# 📄 AfriTube Progress Status Reports
+# <img src="../public/fav.png" width="35" height="35" style="vertical-align:middle;margin-right:-8px"/> AfriTube Progress Status Reports
 
 ---
 

@@ -1,4 +1,4 @@
-# 📘 Afritube Documentation Plan (/docs Folder Structure)
+# <img src="../public/fav.png" width="35" height="35" style="vertical-align:middle;margin-right:-8px"/> Afritube Documentation Plan (/docs Folder Structure)
 
 Before jumping into the BRD, here’s the **clean documentation architecture** you should create inside your repo:
 

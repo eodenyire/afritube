@@ -1,4 +1,4 @@
-# 📄 AfriTube Product Requirements Document (PRD)
+# <img src="../public/fav.png" width="35" height="35" style="vertical-align:middle;margin-right:-8px"/> AfriTube Product Requirements Document (PRD)
 
 ---
 
