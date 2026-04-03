@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: afritube-config
+  namespace: afritube
+  labels:
+    app: afritube
+data:
+  VITE_SUPABASE_URL: "https://your-project-id.supabase.co"
+  VITE_SUPABASE_PROJECT_ID: "your-project-id"
+  # Replace values above with your actual Supabase project details
+  # Do NOT put secrets here — use secret.yaml for keys
