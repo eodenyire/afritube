@@ -15,6 +15,9 @@ interface AudioCardProps {
   audioUrl?: string;
 }
 
+// Module-level singleton so only one audio track plays at a time across all AudioCard instances
+let activeCard: { sound: Audio.Sound; stop: () => void } | null = null;
+
 export default function AudioCard({ id, title, artist, coverUrl, streams, audioUrl }: AudioCardProps) {
   const [playing, setPlaying] = useState(false);
   const [streamCount, setStreamCount] = useState(streams);
@@ -24,9 +27,19 @@ export default function AudioCard({ id, title, artist, coverUrl, streams, audioU
   const togglePlay = async () => {
     if (!audioUrl) return;
     if (playing) {
+      // Clear activeCard before awaiting to avoid race conditions from rapid taps
+      if (activeCard?.sound === soundRef.current) activeCard = null;
       await soundRef.current?.pauseAsync();
       setPlaying(false);
       return;
+    }
+    // Capture prevCard before any awaits to avoid race conditions
+    const prevCard = activeCard;
+    if (prevCard && prevCard.sound !== soundRef.current) {
+      await prevCard.sound.pauseAsync();
+      prevCard.stop();
+      // Only clear activeCard if it hasn't been updated by another card in the meantime
+      if (activeCard === prevCard) activeCard = null;
     }
     if (!soundRef.current) {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -35,7 +48,10 @@ export default function AudioCard({ id, title, artist, coverUrl, streams, audioU
         { shouldPlay: true },
         (status) => {
           if (!status.isLoaded) return;
-          if (status.didJustFinish) setPlaying(false);
+          if (status.didJustFinish) {
+            if (activeCard?.sound === soundRef.current) activeCard = null;
+            setPlaying(false);
+          }
           // Count stream after 30s
           if (!countedRef.current && status.positionMillis >= 30000) {
             countedRef.current = true;
@@ -52,9 +68,10 @@ export default function AudioCard({ id, title, artist, coverUrl, streams, audioU
         }
       );
       soundRef.current = sound;
-    } else {
-      await soundRef.current.playAsync();
     }
+    // Register as active card before starting playback
+    activeCard = { sound: soundRef.current, stop: () => setPlaying(false) };
+    await soundRef.current.playAsync();
     setPlaying(true);
   };
 

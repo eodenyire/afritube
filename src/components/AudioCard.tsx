@@ -14,6 +14,9 @@ interface AudioCardProps {
   audioUrl?: string;
 }
 
+// Module-level singleton so only one audio track plays at a time across all AudioCard instances
+let activeCard: { audio: HTMLAudioElement; stop: () => void } | null = null;
+
 const AudioCard = ({ id, title, artist, cover, streams, duration, audioUrl }: AudioCardProps) => {
   const [liked, setLiked] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -61,10 +64,18 @@ const AudioCard = ({ id, title, artist, cover, streams, duration, audioUrl }: Au
     }
     if (playing) {
       audioRef.current.pause();
+      setPlaying(false);
+      if (activeCard?.audio === audioRef.current) activeCard = null;
     } else {
+      // Stop any other card that is currently playing
+      if (activeCard && activeCard.audio !== audioRef.current) {
+        activeCard.audio.pause();
+        activeCard.stop();
+      }
       audioRef.current.play();
+      activeCard = { audio: audioRef.current, stop: () => setPlaying(false) };
+      setPlaying(true);
     }
-    setPlaying(!playing);
   };
 
   return (
