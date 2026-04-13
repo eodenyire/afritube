@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <!-- Background -->
+  <rect width="390" height="844" fill="#0f0b08" rx="40"/>
+
+  <!-- Status bar -->
+  <text x="20" y="26" fill="#f0e8d8" font-size="12" font-family="sans-serif">9:41</text>
+  <text x="340" y="26" fill="#f0e8d8" font-size="12" font-family="sans-serif">●●●</text>
+
+  <!-- Search Bar -->
+  <rect x="16" y="44" width="358" height="44" rx="22" fill="#2a2018"/>
+  <!-- Search icon -->
+  <circle cx="40" cy="66" r="7" fill="none" stroke="#8a7a6a" stroke-width="2"/>
+  <line x1="45" y1="71" x2="51" y2="77" stroke="#8a7a6a" stroke-width="2" stroke-linecap="round"/>
+  <text x="60" y="71" fill="#8a7a6a" font-size="14" font-family="sans-serif">Search videos, music, blogs...</text>
+
+  <!-- Empty State -->
+  <!-- Large search icon -->
+  <circle cx="195" cy="360" r="40" fill="none" stroke="#3a3028" stroke-width="4"/>
+  <line x1="225" y1="388" x2="248" y2="410" stroke="#3a3028" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="192" cy="357" r="24" fill="none" stroke="#3a3028" stroke-width="4"/>
+
+  <text x="195" y="440" fill="#f0e8d8" font-size="20" font-weight="bold" font-family="sans-serif" text-anchor="middle">Search AfriTube</text>
+  <text x="195" y="464" fill="#8a7a6a" font-size="13" font-family="sans-serif" text-anchor="middle">Find videos, music, and blogs</text>
+  <text x="195" y="482" fill="#8a7a6a" font-size="13" font-family="sans-serif" text-anchor="middle">from African creators</text>
+
+  <!-- Bottom Tab Bar -->
+  <rect x="0" y="780" width="390" height="64" fill="#1a1410"/>
+  <line x1="0" y1="780" x2="390" y2="780" stroke="#2a2018" stroke-width="1"/>
+  <text x="49" y="806" fill="#8a7a6a" font-size="20" font-family="sans-serif" text-anchor="middle">⌂</text>
+  <text x="49" y="822" fill="#8a7a6a" font-size="10" font-family="sans-serif" text-anchor="middle">Home</text>
+  <text x="146" y="806" fill="#8a7a6a" font-size="20" font-family="sans-serif" text-anchor="middle">♫</text>
+  <text x="146" y="822" fill="#8a7a6a" font-size="10" font-family="sans-serif" text-anchor="middle">Music</text>
+  <text x="244" y="806" fill="#8a7a6a" font-size="20" font-family="sans-serif" text-anchor="middle">✎</text>
+  <text x="244" y="822" fill="#8a7a6a" font-size="10" font-family="sans-serif" text-anchor="middle">Blogs</text>
+  <text x="341" y="806" fill="#8a7a6a" font-size="20" font-family="sans-serif" text-anchor="middle">☰</text>
+  <text x="341" y="822" fill="#8a7a6a" font-size="10" font-family="sans-serif" text-anchor="middle">Dashboard</text>
+
+  <!-- Screen label -->
+  <rect x="97" y="750" width="196" height="24" rx="6" fill="#1a1410"/>
+  <text x="195" y="767" fill="#8a7a6a" font-size="11" font-family="sans-serif" text-anchor="middle">Screen 5 of 11 · Search (Empty)</text>
+</svg>
