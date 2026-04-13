@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <!-- Background -->
+  <rect width="390" height="844" fill="#0f0b08" rx="40"/>
+
+  <!-- Status bar -->
+  <text x="30" y="30" fill="#f0e8d8" font-size="12" font-family="sans-serif">9:41</text>
+  <text x="340" y="30" fill="#f0e8d8" font-size="12" font-family="sans-serif">●●●</text>
+
+  <!-- Logo Row -->
+  <rect x="97" y="160" width="44" height="44" rx="10" fill="#e8920a"/>
+  <text x="119" y="188" fill="#0f0b08" font-size="22" font-weight="bold" font-family="sans-serif" text-anchor="middle">A</text>
+  <text x="152" y="188" fill="#f0e8d8" font-size="24" font-weight="bold" font-family="sans-serif">Afri<tspan fill="#e8920a">Tube</tspan></text>
+
+  <!-- Title -->
+  <text x="97" y="240" fill="#f0e8d8" font-size="26" font-weight="bold" font-family="sans-serif">Welcome back</text>
+  <!-- Subtitle -->
+  <text x="97" y="264" fill="#8a7a6a" font-size="14" font-family="sans-serif">Sign in to continue</text>
+
+  <!-- Email input -->
+  <rect x="97" y="292" width="196" height="48" rx="10" fill="#2a2018" stroke="#2a2018" stroke-width="1"/>
+  <text x="113" y="321" fill="#8a7a6a" font-size="14" font-family="sans-serif">Email</text>
+
+  <!-- Password input -->
+  <rect x="97" y="352" width="196" height="48" rx="10" fill="#2a2018" stroke="#2a2018" stroke-width="1"/>
+  <text x="113" y="381" fill="#8a7a6a" font-size="14" font-family="sans-serif">Password</text>
+
+  <!-- Sign In button -->
+  <rect x="97" y="416" width="196" height="48" rx="24" fill="#e8920a"/>
+  <text x="195" y="445" fill="#0f0b08" font-size="16" font-weight="bold" font-family="sans-serif" text-anchor="middle">Sign In</text>
+
+  <!-- Forgot password link -->
+  <text x="195" y="500" fill="#e8920a" font-size="14" font-family="sans-serif" text-anchor="middle">Forgot password?</text>
+
+  <!-- Sign up row -->
+  <text x="195" y="530" fill="#8a7a6a" font-size="14" font-family="sans-serif" text-anchor="middle">Don't have an account? <tspan fill="#e8920a">Sign up</tspan></text>
+
+  <!-- Screen label -->
+  <rect x="97" y="780" width="196" height="28" rx="6" fill="#1a1410"/>
+  <text x="195" y="799" fill="#8a7a6a" font-size="12" font-family="sans-serif" text-anchor="middle">Screen 1 of 11 · Login</text>
+</svg>
