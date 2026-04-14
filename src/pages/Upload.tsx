@@ -142,8 +142,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const url = URL.createObjectURL(file);
       let settled = false;
       let captured = false;
-      let targetTime = 0;
-      let timeoutId = 0;
+      let targetTime: number | null = null;
+      let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
@@ -154,7 +154,9 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const finish = (result: File | null) => {
         if (settled) return;
         settled = true;
-        window.clearTimeout(timeoutId);
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
         cleanup();
         resolve(result);
       };
@@ -214,10 +216,12 @@ function VideoUploadForm({ userId }: { userId: string }) {
         if (targetTime > 0) {
           try {
             video.currentTime = targetTime;
-          } catch {
-            console.warn("Thumbnail seek failed; capturing the first frame instead.");
+          } catch (error) {
+            console.warn("Thumbnail seek failed; capturing the first frame instead.", error);
             scheduleCapture();
           }
+        } else if (video.readyState >= 2) {
+          scheduleCapture();
         }
       }, { once: true });
 
