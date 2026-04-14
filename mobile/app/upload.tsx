@@ -72,8 +72,8 @@ export default function UploadScreen() {
       Alert.alert('Submitted!', 'Your content has been saved as a draft.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
