@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import { Eye, Clock, Share2, User } from "lucide-react";
 import VideoReactions from "@/components/VideoReactions";
@@ -27,12 +28,13 @@ interface Video {
 interface CreatorProfile {
   display_name: string | null;
   avatar_url: string | null;
-  subscriber_count: number;
-  is_monetized: boolean;
+  subscriber_count?: number;
+  is_monetized?: boolean;
 }
 
 const Watch = () => {
   const { id } = useParams<{ id: string }>();
+  const { user, isAdmin } = useAuth();
   const [video, setVideo] = useState<Video | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
@@ -72,9 +74,13 @@ const Watch = () => {
         .then();
 
       // Fetch creator profile
+      const canViewEligibility = isAdmin || user?.id === vid.user_id;
+      const profileSelect = canViewEligibility
+        ? "display_name, avatar_url, subscriber_count, is_monetized"
+        : "display_name, avatar_url";
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url, subscriber_count, is_monetized")
+        .select(profileSelect)
         .eq("user_id", vid.user_id)
         .single();
       setCreator(profile);
@@ -153,6 +159,8 @@ const Watch = () => {
     );
   }
 
+  const canViewCreatorStats = isAdmin || user?.id === video.user_id;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -219,15 +227,17 @@ const Watch = () => {
                   <Link to={`/creator/${video.user_id}`} className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors">
                     {creator?.display_name ?? "Unknown Creator"}
                   </Link>
-                  {creator?.is_monetized && (
+                  {canViewCreatorStats && creator?.is_monetized && (
                     <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
                       MONETIZED
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {formatViews(creator?.subscriber_count ?? 0)} subscribers
-                </span>
+                {canViewCreatorStats && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatViews(creator?.subscriber_count ?? 0)} subscribers
+                  </span>
+                )}
               </div>
               <SubscribeButton creatorUserId={video.user_id} />
             </div>

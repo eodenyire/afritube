@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Upload, Bell, Menu, X, User, LogOut } from "lucide-react";
+import { Search, Upload, Bell, Menu, X, User, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const navLinks = [
@@ -67,6 +67,11 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-2 ml-4">
+          {isAdmin && (
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/admin")}>
+              <Shield size={14} /> Admin
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/upload")}>
             <Upload size={20} />
           </Button>
@@ -138,6 +143,15 @@ const Navbar = () => {
                   {link.label}
                 </a>
               ))}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); navigate("/admin"); }}
+                  className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                >
+                  Admin Panel
+                </button>
+              )}
               <div className="pt-2">
                 <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("mq") as HTMLInputElement).value; if (q.trim()) { setMobileOpen(false); navigate(`/search?q=${encodeURIComponent(q.trim())}`); } }} className="flex items-center rounded-full border border-border bg-secondary">
                   <input
