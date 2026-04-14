@@ -15,6 +15,11 @@ import Search from "./pages/Search.tsx";
 import CreatorProfile from "./pages/CreatorProfile.tsx";
 import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import About from "./pages/About.tsx";
+import Creators from "./pages/Creators.tsx";
+import Advertise from "./pages/Advertise.tsx";
+import Terms from "./pages/Terms.tsx";
+import Privacy from "./pages/Privacy.tsx";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +41,11 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/creator/:userId" element={<CreatorProfile />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/creators" element={<Creators />} />
+            <Route path="/advertise" element={<Advertise />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
