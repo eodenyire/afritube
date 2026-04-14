@@ -33,7 +33,7 @@ export default function VideoCard({ id, title, channel, views, duration, thumbna
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.thumbnail}>
         <Image
-          source={thumbnailUrl ? { uri: thumbnailUrl } : require('@/assets/placeholder.png')}
+          source={thumbnailUrl ? { uri: thumbnailUrl } : { uri: 'https://placehold.co/640x360/1a1410/8a7a6a?text=AfriTube' }}
           style={styles.thumbnailImg}
           contentFit="cover"
         />

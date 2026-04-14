@@ -79,7 +79,7 @@ export default function AudioCard({ id, title, artist, coverUrl, streams, audioU
     <TouchableOpacity style={styles.card} onPress={togglePlay} activeOpacity={0.8}>
       <View style={styles.cover}>
         <Image
-          source={coverUrl ? { uri: coverUrl } : require('@/assets/placeholder.png')}
+          source={coverUrl ? { uri: coverUrl } : { uri: 'https://placehold.co/280x280/1a1410/8a7a6a?text=AfriTube' }}
           style={styles.coverImg}
           contentFit="cover"
         />
