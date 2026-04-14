@@ -142,7 +142,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const url = URL.createObjectURL(file);
       let settled = false;
       let captured = false;
-      let targetTime: number | null = null;
+      let targetTime = 0;
+      let metadataLoaded = false;
       let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
 
       const cleanup = () => {
@@ -212,6 +213,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       video.addEventListener("loadedmetadata", () => {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
+        metadataLoaded = true;
         targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
         if (targetTime > 0) {
           try {
@@ -227,7 +229,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       video.addEventListener("seeked", () => scheduleCapture(), { once: true });
       video.addEventListener("loadeddata", () => {
-        if (targetTime === 0) scheduleCapture();
+        if (metadataLoaded && targetTime === 0) scheduleCapture();
       }, { once: true });
       video.addEventListener("error", () => finish(null), { once: true });
     });
