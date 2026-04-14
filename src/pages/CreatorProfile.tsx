@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SubscribeButton from "@/components/SubscribeButton";
 import { User, Eye, Clock, Play, Music, BookOpen } from "lucide-react";
@@ -13,8 +14,8 @@ interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
-  subscriber_count: number;
-  is_monetized: boolean;
+  subscriber_count?: number;
+  is_monetized?: boolean;
   created_at: string;
 }
 
@@ -66,6 +67,7 @@ const formatDuration = (s: number | null) => {
 
 const CreatorProfile = () => {
   const { userId } = useParams<{ userId: string }>();
+  const { user, isAdmin } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [audio, setAudio] = useState<AudioTrack[]>([]);
@@ -76,11 +78,15 @@ const CreatorProfile = () => {
     if (!userId) return;
     const load = async () => {
       setLoading(true);
+      const canViewEligibility = isAdmin || user?.id === userId;
+      const profileSelect = canViewEligibility
+        ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, created_at"
+        : "user_id, display_name, avatar_url, bio, created_at";
       const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }] =
         await Promise.all([
           supabase
             .from("profiles")
-            .select("user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, created_at")
+            .select(profileSelect)
             .eq("user_id", userId)
             .single(),
           supabase
@@ -109,7 +115,7 @@ const CreatorProfile = () => {
       setLoading(false);
     };
     load();
-  }, [userId]);
+  }, [userId, user?.id, isAdmin]);
 
   if (loading) {
     return (
@@ -147,6 +153,7 @@ const CreatorProfile = () => {
   }
 
   const totalContent = videos.length + audio.length + blogs.length;
+  const canViewEligibility = isAdmin || user?.id === profile.user_id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,14 +181,16 @@ const CreatorProfile = () => {
               <h1 className="font-display font-bold text-xl text-foreground truncate">
                 {profile.display_name ?? "Unknown Creator"}
               </h1>
-              {profile.is_monetized && (
+              {canViewEligibility && profile.is_monetized && (
                 <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                   ✦ MONETIZED
                 </span>
               )}
             </div>
             <div className="flex items-center justify-center sm:justify-start gap-4 text-sm text-muted-foreground mt-1">
-              <span>{formatCount(profile.subscriber_count)} subscribers</span>
+              {canViewEligibility && (
+                <span>{formatCount(profile.subscriber_count ?? 0)} subscribers</span>
+              )}
               <span>{totalContent} uploads</span>
               <span>Joined {timeAgo(profile.created_at)}</span>
             </div>

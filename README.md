@@ -15,7 +15,11 @@ AfriTube implements a strict but achievable monetization gateway to ensure quali
 * **Status Tracking:** Real-time progress bars for creators to track their eligibility.
 * **Ad-Integration:** Once eligible, the platform enables automated ad-rolls and revenue sharing.
 
-### 3. User Experience & Auth
+### 3. Admin Operations Console
+* **Creator Management:** Review creator engagement, subscriber counts, and monetization status.
+* **Content Oversight:** Manage videos, tracks, and blog posts from a single dashboard.
+
+### 4. User Experience & Auth
 * **Hybrid Access:** Users can browse and watch content anonymously or create an account for a personalized experience.
 * **Unified Auth:** Secure login via **Email**, **Google**, and **Apple** (powered by Lovable Cloud).
 * **Smart Profiles:** Automatic profile generation including bios, avatars, and creator metrics.
@@ -51,8 +55,7 @@ $$Eligible = (Subscribers \ge 100) \land (WatchHours \ge 1000)$$
 
 1.  **Clone the Repo:** `git clone https://github.com/eodenyire/afritube.git`
 2.  **Install Dependencies:** `npm install`
-3.  **Environment Variables:** Configure your `LOVABLE_CLOUD_KEY` and Social Auth IDs in `.env`.
+3.  **Environment Variables:** Configure your Supabase keys and `VITE_ADMIN_EMAILS` in `.env`.
 4.  **Run Development:** `npm run dev`
 
 ---
-

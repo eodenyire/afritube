@@ -1,0 +1,31 @@
+<svg width="390" height="844" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
+  <rect width="390" height="844" fill="#0f0b08"/>
+  <!-- Status bar -->
+  <rect width="390" height="44" fill="#0f0b08"/>
+  <text x="20" y="28" fill="#f0e8d8" font-size="13" font-weight="600">9:41</text>
+  <text x="340" y="28" fill="#f0e8d8" font-size="12">●●● 100%</text>
+  <!-- Header -->
+  <rect x="0" y="44" width="390" height="56" fill="#0f0b08"/>
+  <text x="20" y="80" fill="#f0e8d8" font-size="20" font-weight="bold">Dashboard</text>
+
+  <!-- Centered sign-in prompt -->
+  <text x="195" y="340" fill="#8a7a6a" font-size="64" text-anchor="middle">👤</text>
+  <text x="195" y="420" fill="#f0e8d8" font-size="22" font-weight="bold" text-anchor="middle">Sign in to AfriTube</text>
+  <text x="195" y="448" fill="#8a7a6a" font-size="14" text-anchor="middle">Upload content, track your stats,</text>
+  <text x="195" y="468" fill="#8a7a6a" font-size="14" text-anchor="middle">and grow your audience.</text>
+
+  <!-- Sign In button -->
+  <rect x="115" y="492" width="160" height="48" rx="999" fill="#e8920a"/>
+  <text x="195" y="522" fill="#0f0b08" font-size="16" font-weight="600" text-anchor="middle">Sign In</text>
+
+  <!-- Bottom tab bar -->
+  <rect x="0" y="784" width="390" height="60" fill="#1a1410" stroke="#2a2018" stroke-width="1"/>
+  <text x="49" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">⌂</text>
+  <text x="49" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Home</text>
+  <text x="147" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">♪</text>
+  <text x="147" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Music</text>
+  <text x="245" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">📖</text>
+  <text x="245" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Blogs</text>
+  <text x="343" y="808" fill="#e8920a" font-size="22" text-anchor="middle">👤</text>
+  <text x="343" y="826" fill="#e8920a" font-size="11" text-anchor="middle">Dashboard</text>
+</svg>

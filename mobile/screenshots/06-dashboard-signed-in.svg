@@ -1,0 +1,58 @@
+<svg width="390" height="844" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg" font-family="Inter, system-ui, sans-serif">
+  <rect width="390" height="844" fill="#0f0b08"/>
+  <!-- Status bar -->
+  <rect width="390" height="44" fill="#0f0b08"/>
+  <text x="20" y="28" fill="#f0e8d8" font-size="13" font-weight="600">9:41</text>
+  <text x="340" y="28" fill="#f0e8d8" font-size="12">●●● 100%</text>
+  <!-- Header -->
+  <rect x="0" y="44" width="390" height="56" fill="#0f0b08"/>
+  <text x="20" y="80" fill="#f0e8d8" font-size="20" font-weight="bold">Dashboard</text>
+
+  <!-- Profile header -->
+  <circle cx="52" cy="140" r="28" fill="#e8920a"/>
+  <text x="52" y="148" fill="#0f0b08" font-size="22" font-weight="bold" text-anchor="middle">E</text>
+  <text x="96" y="132" fill="#f0e8d8" font-size="18" font-weight="bold">Emmanuel Odeny</text>
+  <text x="96" y="152" fill="#8a7a6a" font-size="13">creator@afritube.com</text>
+  <text x="360" y="148" fill="#8a7a6a" font-size="22" text-anchor="middle">⎋</text>
+
+  <!-- Stats grid -->
+  <rect x="16" y="184" width="172" height="80" rx="14" fill="#1a1410"/>
+  <text x="102" y="218" fill="#f0e8d8" font-size="24" font-weight="bold" text-anchor="middle">3</text>
+  <text x="102" y="240" fill="#8a7a6a" font-size="12" text-anchor="middle">Subscribers</text>
+
+  <rect x="202" y="184" width="172" height="80" rx="14" fill="#1a1410"/>
+  <text x="288" y="218" fill="#f0e8d8" font-size="24" font-weight="bold" text-anchor="middle">0</text>
+  <text x="288" y="240" fill="#8a7a6a" font-size="12" text-anchor="middle">Watch Hours</text>
+
+  <!-- Monetization Progress -->
+  <text x="16" y="296" fill="#f0e8d8" font-size="16" font-weight="700">Monetization Progress</text>
+
+  <!-- Subscribers progress -->
+  <text x="16" y="328" fill="#8a7a6a" font-size="13">Subscribers</text>
+  <text x="374" y="328" fill="#f0e8d8" font-size="13" font-weight="600" text-anchor="end">3 / 100</text>
+  <rect x="16" y="336" width="358" height="6" rx="999" fill="#2a2018"/>
+  <rect x="16" y="336" width="10" height="6" rx="999" fill="#e8920a"/>
+
+  <!-- Watch hours progress -->
+  <text x="16" y="368" fill="#8a7a6a" font-size="13">Watch Hours</text>
+  <text x="374" y="368" fill="#f0e8d8" font-size="13" font-weight="600" text-anchor="end">0 / 1,000</text>
+  <rect x="16" y="376" width="358" height="6" rx="999" fill="#2a2018"/>
+  <rect x="16" y="376" width="2" height="6" rx="999" fill="#e8920a"/>
+
+  <!-- Upload action -->
+  <rect x="16" y="408" width="358" height="56" rx="14" fill="#1a1410"/>
+  <text x="52" y="442" fill="#e8920a" font-size="20">↑</text>
+  <text x="76" y="442" fill="#f0e8d8" font-size="15" font-weight="500">Upload Content</text>
+  <text x="362" y="442" fill="#8a7a6a" font-size="16" text-anchor="end">›</text>
+
+  <!-- Bottom tab bar -->
+  <rect x="0" y="784" width="390" height="60" fill="#1a1410" stroke="#2a2018" stroke-width="1"/>
+  <text x="49" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">⌂</text>
+  <text x="49" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Home</text>
+  <text x="147" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">♪</text>
+  <text x="147" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Music</text>
+  <text x="245" y="808" fill="#8a7a6a" font-size="22" text-anchor="middle">📖</text>
+  <text x="245" y="826" fill="#8a7a6a" font-size="11" text-anchor="middle">Blogs</text>
+  <text x="343" y="808" fill="#e8920a" font-size="22" text-anchor="middle">👤</text>
+  <text x="343" y="826" fill="#e8920a" font-size="11" text-anchor="middle">Dashboard</text>
+</svg>

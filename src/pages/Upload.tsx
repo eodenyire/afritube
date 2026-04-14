@@ -131,6 +131,112 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
+  const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
+  const THUMBNAIL_JPEG_QUALITY = 0.85;
+  const THUMBNAIL_TIMEOUT_MS = 8000;
+
+  const createVideoThumbnail = (file: File): Promise<File | null> =>
+    new Promise((resolve) => {
+      const video = document.createElement("video");
+      const canvas = document.createElement("canvas");
+      const url = URL.createObjectURL(file);
+      let settled = false;
+      let captured = false;
+      let targetTime = 0;
+      let metadataLoaded = false;
+      let thumbnailTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+
+      const cleanup = () => {
+        URL.revokeObjectURL(url);
+        video.removeAttribute("src");
+        video.load();
+      };
+
+      const finish = (result: File | null) => {
+        if (settled) return;
+        settled = true;
+        if (thumbnailTimeoutId) {
+          window.clearTimeout(thumbnailTimeoutId);
+        }
+        cleanup();
+        resolve(result);
+      };
+
+      thumbnailTimeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
+
+      const captureFrame = () => {
+        if (captured) return;
+        captured = true;
+        if (!video.videoWidth || !video.videoHeight) {
+          finish(null);
+          return;
+        }
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          finish(null);
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              finish(null);
+              return;
+            }
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            const thumbFile = new File([blob], `${baseName}-thumbnail.jpg`, { type: "image/jpeg" });
+            finish(thumbFile);
+          },
+          "image/jpeg",
+          THUMBNAIL_JPEG_QUALITY,
+        );
+      };
+
+      const scheduleCapture = () => {
+        if (captured) return;
+        const videoWithFrameCallback = video as HTMLVideoElement & {
+          requestVideoFrameCallback?: (callback: () => void) => number;
+        };
+        if (videoWithFrameCallback.requestVideoFrameCallback) {
+          videoWithFrameCallback.requestVideoFrameCallback(() => captureFrame());
+          return;
+        }
+        requestAnimationFrame(() => captureFrame());
+      };
+
+      video.preload = "metadata";
+      video.src = url;
+      video.muted = true;
+      video.playsInline = true;
+
+      video.addEventListener("loadedmetadata", () => {
+        const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
+        metadataLoaded = true;
+        targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
+        if (targetTime > 0) {
+          try {
+            video.currentTime = targetTime;
+          } catch (error) {
+            console.warn("Thumbnail seek failed; capturing the first frame instead.", {
+              error,
+              targetTime,
+              duration: safeDuration,
+            });
+            scheduleCapture();
+          }
+        } else if (video.readyState >= 2) {
+          scheduleCapture();
+        }
+      }, { once: true });
+
+      video.addEventListener("seeked", () => scheduleCapture(), { once: true });
+      video.addEventListener("loadeddata", () => {
+        if (metadataLoaded && targetTime === 0) scheduleCapture();
+      }, { once: true });
+      video.addEventListener("error", () => finish(null), { once: true });
+    });
 
   const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
     new Promise((resolve) => {
@@ -156,9 +262,16 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
 
       let thumbnailUrl: string | null = null;
-      if (thumbFile) {
-        const thumbPath = `${userId}/${Date.now()}-${thumbFile.name}`;
-        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, thumbFile);
+      const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
+      if (!finalThumbFile) {
+        toast({
+          title: "Thumbnail skipped",
+          description: "We couldn't auto-generate a thumbnail. You can upload one later.",
+        });
+      }
+      if (finalThumbFile) {
+        const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
+        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
         if (tErr) throw tErr;
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
       }
@@ -186,7 +299,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   return (
     <div className="space-y-6 mt-6">
       <FileDropZone accept="video/*" label="Upload your video" icon={<Video size={32} />} file={videoFile} onFileSelect={setVideoFile} onClear={() => setVideoFile(null)} />
-      <FileDropZone accept="image/*" label="Upload thumbnail (optional)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
+      <FileDropZone accept="image/*" label="Upload thumbnail (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
       <div className="space-y-4">
         <div>
           <Label htmlFor="v-title">Title</Label>

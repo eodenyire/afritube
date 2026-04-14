@@ -5,6 +5,7 @@ import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import VideoCard from "@/components/VideoCard";
 import AudioCard from "@/components/AudioCard";
@@ -12,6 +13,7 @@ import BlogCard from "@/components/BlogCard";
 import CreatorBadge from "@/components/CreatorBadge";
 import SectionHeader from "@/components/SectionHeader";
 import CategoryPills from "@/components/CategoryPills";
+import Footer from "@/components/Footer";
 
 import heroBg from "@/assets/hero-bg.jpg";
 import thumb1 from "@/assets/thumb-1.jpg";
@@ -77,6 +79,7 @@ const fadeUp = {
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dbVideos, setDbVideos] = useState<any[]>([]);
   const [dbAudios, setDbAudios] = useState<any[]>([]);
@@ -84,6 +87,7 @@ const Index = () => {
   const [dbCreators, setDbCreators] = useState<any[]>([]);
   const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const getMonetizedStatus = (value?: boolean) => isAdmin && !!value;
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -104,9 +108,12 @@ const Index = () => {
       blogs.forEach((b) => userIds.add(b.user_id));
 
       if (userIds.size > 0) {
+        const profileSelect = isAdmin
+          ? "user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours"
+          : "user_id, display_name, avatar_url";
         const { data: profs } = await supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours")
+          .select(profileSelect)
           .in("user_id", Array.from(userIds));
         const map: Record<string, any> = {};
         (profs ?? []).forEach((p) => { map[p.user_id] = p; });
@@ -122,7 +129,7 @@ const Index = () => {
     };
 
     fetchAll();
-  }, []);
+  }, [isAdmin]);
 
   // Map DB videos to VideoCard props — filter by active category
   const allVideoCards = dbVideos.length > 0
@@ -136,11 +143,11 @@ const Index = () => {
           duration: formatDuration(v.duration),
           thumbnail: v.thumbnail_url ?? thumb1,
           avatar: p?.avatar_url ?? album1,
-          isMonetized: p?.is_monetized ?? false,
+          isMonetized: getMonetizedStatus(p?.is_monetized),
           category: v.category,
         };
       })
-    : sampleVideos.map((v) => ({ ...v, category: "Trending" }));
+    : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: getMonetizedStatus(v.isMonetized) }));
 
   const videoCards = activeVideoCategory === "Trending"
     ? allVideoCards.slice(0, 8)
@@ -302,34 +309,21 @@ const Index = () => {
 
         {/* Creator Monetization */}
         <motion.section {...fadeUp} id="creators">
-          <SectionHeader icon={<TrendingUp size={22} />} title="Creator Hub" subtitle="Track your progress to monetization — 100 subscribers & 1,000 watch hours" onSeeAll={hasMoreCreators ? () => navigate("/search?type=creators") : undefined} />
+          <SectionHeader
+            icon={<TrendingUp size={22} />}
+            title={isAdmin ? "Creator Hub" : "Featured Creators"}
+            subtitle={isAdmin ? "Track your progress to monetization — 100 subscribers & 1,000 watch hours" : "Discover creators across Africa"}
+            onSeeAll={hasMoreCreators ? () => navigate("/search?type=creators") : undefined}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {creatorCards.map((c) => (
-              <CreatorBadge key={c.name} {...c} />
+              <CreatorBadge key={c.name} {...c} showEligibility={isAdmin} />
             ))}
           </div>
         </motion.section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-12">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-0">
-              <img src="/favicon.png" alt="AfriTube" className="h-10 w-10 object-contain -mr-2" />
-              <span className="font-display font-bold text-lg text-foreground">Afri<span className="text-gradient-gold">Tube</span></span>
-            </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">About</a>
-              <a href="#" className="hover:text-foreground transition-colors">Creators</a>
-              <a href="#" className="hover:text-foreground transition-colors">Advertise</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            </div>
-            <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} AfriTube - A product of African Digital Technologies</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
