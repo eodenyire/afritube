@@ -30,7 +30,7 @@ export default function WatchScreen() {
     if (video?.video_url) {
       player.replace({ uri: video.video_url });
     }
-  }, [video?.video_url]);
+  }, [video?.video_url, player]);
 
   if (!video) {
     return (

@@ -14,29 +14,30 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async (searchTerm = query) => {
-    if (!searchTerm.trim()) return;
+  const runSearch = async (term: string) => {
+    if (!term.trim()) return;
     setLoading(true);
     setSearched(true);
-    const term = `%${searchTerm.trim()}%`;
+    const pattern = `%${term.trim()}%`;
     const { data } = await supabase
       .from('videos')
       .select('*, profiles(display_name, avatar_url)')
       .eq('is_published', true)
-      .or(`title.ilike.${term},description.ilike.${term},category.ilike.${term}`)
+      .or(`title.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`)
       .order('views', { ascending: false })
       .limit(20);
     setVideos(data ?? []);
     setLoading(false);
   };
 
+  const handleSearch = () => runSearch(query);
+
   // Auto-search when arriving with a ?q= param from the home screen
   useEffect(() => {
     if (q?.trim()) {
-      handleSearch(q.trim());
+      runSearch(q.trim());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [q]);
 
   return (
     <View style={styles.container}>
@@ -48,7 +49,7 @@ export default function SearchScreen() {
           placeholderTextColor={colors.mutedForeground}
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={() => handleSearch()}
+          onSubmitEditing={handleSearch}
           returnKeyType="search"
           autoFocus
         />
