@@ -60,7 +60,7 @@ const CreatorBadge = ({ name, avatar, subscribers, watchHours, isEligible, showE
           </div>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Discover their latest uploads in the creator page.</p>
+        <p className="text-xs text-muted-foreground">Discover their latest uploads in the creator's page.</p>
       )}
     </div>
   );

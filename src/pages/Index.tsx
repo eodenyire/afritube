@@ -141,11 +141,11 @@ const Index = () => {
           duration: formatDuration(v.duration),
           thumbnail: v.thumbnail_url ?? thumb1,
           avatar: p?.avatar_url ?? album1,
-          isMonetized: isAdmin ? (p?.is_monetized ?? false) : false,
+          isMonetized: isAdmin && (p?.is_monetized ?? false),
           category: v.category,
         };
       })
-    : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: isAdmin ? v.isMonetized : false }));
+    : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: isAdmin && v.isMonetized }));
 
   const videoCards = activeVideoCategory === "Trending"
     ? allVideoCards.slice(0, 8)

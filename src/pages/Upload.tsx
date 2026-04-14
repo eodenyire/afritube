@@ -162,7 +162,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       video.onloadedmetadata = () => {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
-        const targetTime = Math.min(MAX_THUMBNAIL_TIME_SECONDS, Math.max(0, safeDuration / 2));
+        const targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_TIME_SECONDS);
         video.currentTime = targetTime;
       };
 
