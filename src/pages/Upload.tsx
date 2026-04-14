@@ -133,6 +133,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [category, setCategory] = useState("General");
   const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
   const THUMBNAIL_JPEG_QUALITY = 0.85;
+  const THUMBNAIL_TIMEOUT_MS = 8000;
 
   const createVideoThumbnail = (file: File): Promise<File | null> =>
     new Promise((resolve) => {
@@ -141,6 +142,9 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const url = URL.createObjectURL(file);
       let settled = false;
       let captured = false;
+      let targetTime = 0;
+      let metadataLoaded = false;
+      let thumbnailTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
@@ -151,20 +155,14 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const finish = (result: File | null) => {
         if (settled) return;
         settled = true;
+        if (thumbnailTimeoutId) {
+          window.clearTimeout(thumbnailTimeoutId);
+        }
         cleanup();
         resolve(result);
       };
 
-      video.preload = "metadata";
-      video.src = url;
-      video.muted = true;
-      video.playsInline = true;
-
-      video.onloadedmetadata = () => {
-        const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
-        const targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
-        video.currentTime = targetTime;
-      };
+      thumbnailTimeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
 
       const captureFrame = () => {
         if (captured) return;
@@ -196,12 +194,48 @@ function VideoUploadForm({ userId }: { userId: string }) {
         );
       };
 
-      video.onseeked = captureFrame;
-      video.onloadeddata = () => {
-        if (video.currentTime === 0) captureFrame();
+      const scheduleCapture = () => {
+        if (captured) return;
+        const videoWithFrameCallback = video as HTMLVideoElement & {
+          requestVideoFrameCallback?: (callback: () => void) => number;
+        };
+        if (videoWithFrameCallback.requestVideoFrameCallback) {
+          videoWithFrameCallback.requestVideoFrameCallback(() => captureFrame());
+          return;
+        }
+        requestAnimationFrame(() => captureFrame());
       };
 
-      video.onerror = () => finish(null);
+      video.preload = "metadata";
+      video.src = url;
+      video.muted = true;
+      video.playsInline = true;
+
+      video.addEventListener("loadedmetadata", () => {
+        const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
+        metadataLoaded = true;
+        targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
+        if (targetTime > 0) {
+          try {
+            video.currentTime = targetTime;
+          } catch (error) {
+            console.warn("Thumbnail seek failed; capturing the first frame instead.", {
+              error,
+              targetTime,
+              duration: safeDuration,
+            });
+            scheduleCapture();
+          }
+        } else if (video.readyState >= 2) {
+          scheduleCapture();
+        }
+      }, { once: true });
+
+      video.addEventListener("seeked", () => scheduleCapture(), { once: true });
+      video.addEventListener("loadeddata", () => {
+        if (metadataLoaded && targetTime === 0) scheduleCapture();
+      }, { once: true });
+      video.addEventListener("error", () => finish(null), { once: true });
     });
 
   const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
@@ -229,6 +263,12 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       let thumbnailUrl: string | null = null;
       const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
+      if (!finalThumbFile) {
+        toast({
+          title: "Thumbnail skipped",
+          description: "We couldn't auto-generate a thumbnail. You can upload one later.",
+        });
+      }
       if (finalThumbFile) {
         const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
         const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
