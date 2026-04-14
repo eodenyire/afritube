@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { colors, spacing, radius } from '@/constants/theme';
@@ -8,16 +8,17 @@ import VideoCard from '@/components/VideoCard';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const [query, setQuery] = useState(q ?? '');
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const handleSearch = async (searchTerm = query) => {
+    if (!searchTerm.trim()) return;
     setLoading(true);
     setSearched(true);
-    const term = `%${query.trim()}%`;
+    const term = `%${searchTerm.trim()}%`;
     const { data } = await supabase
       .from('videos')
       .select('*, profiles(display_name, avatar_url)')
@@ -29,6 +30,14 @@ export default function SearchScreen() {
     setLoading(false);
   };
 
+  // Auto-search when arriving with a ?q= param from the home screen
+  useEffect(() => {
+    if (q?.trim()) {
+      handleSearch(q.trim());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.searchBar}>
@@ -39,7 +48,7 @@ export default function SearchScreen() {
           placeholderTextColor={colors.mutedForeground}
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={handleSearch}
+          onSubmitEditing={() => handleSearch()}
           returnKeyType="search"
           autoFocus
         />

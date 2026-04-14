@@ -22,9 +22,15 @@ export default function WatchScreen() {
     supabase.rpc('increment_views', { video_id: id }).catch(() => {});
   }, [id]);
 
-  const player = useVideoPlayer(video?.video_url ?? null, p => {
+  const player = useVideoPlayer(null, p => {
     p.loop = false;
   });
+
+  useEffect(() => {
+    if (video?.video_url) {
+      player.replace({ uri: video.video_url });
+    }
+  }, [video?.video_url]);
 
   if (!video) {
     return (
