@@ -164,7 +164,7 @@ const Admin = () => {
       };
       return {
         userId: profile.user_id,
-        name: profile.display_name ?? "Creator",
+        name: profile.display_name ?? "Unknown Creator",
         subscribers: profile.subscriber_count ?? 0,
         watchHours: profile.watch_hours ?? 0,
         monetized: profile.is_monetized ?? false,
@@ -387,7 +387,7 @@ const Admin = () => {
                           return (
                             <TableRow key={video.id}>
                               <TableCell className="max-w-[240px] truncate">{video.title}</TableCell>
-                              <TableCell>{creatorName ?? "Creator"}</TableCell>
+                              <TableCell>{creatorName ?? "Unknown Creator"}</TableCell>
                               <TableCell>{formatNumber(video.views)}</TableCell>
                               <TableCell>{formatDate(video.created_at)}</TableCell>
                               <TableCell className="text-right">
@@ -419,7 +419,7 @@ const Admin = () => {
                           return (
                             <TableRow key={audio.id}>
                               <TableCell className="max-w-[240px] truncate">{audio.title}</TableCell>
-                              <TableCell>{creatorName ?? "Creator"}</TableCell>
+                              <TableCell>{creatorName ?? "Unknown Creator"}</TableCell>
                               <TableCell>{formatNumber(audio.streams)}</TableCell>
                               <TableCell>{formatDate(audio.created_at)}</TableCell>
                               <TableCell className="text-right">
@@ -452,7 +452,7 @@ const Admin = () => {
                           return (
                             <TableRow key={blog.id}>
                               <TableCell className="max-w-[240px] truncate">{blog.title}</TableCell>
-                              <TableCell>{creatorName ?? "Creator"}</TableCell>
+                              <TableCell>{creatorName ?? "Unknown Creator"}</TableCell>
                               <TableCell>{formatNumber(blog.likes)}</TableCell>
                               <TableCell>{formatNumber(blog.comments_count)}</TableCell>
                               <TableCell>{formatDate(blog.created_at)}</TableCell>

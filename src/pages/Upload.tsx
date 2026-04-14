@@ -131,6 +131,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
+  const MAX_THUMBNAIL_TIME_SECONDS = 1;
+  const THUMBNAIL_JPEG_QUALITY = 0.85;
 
   const createVideoThumbnail = (file: File): Promise<File | null> =>
     new Promise((resolve) => {
@@ -160,7 +162,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       video.onloadedmetadata = () => {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
-        const targetTime = Math.min(1, Math.max(0, safeDuration / 2));
+        const targetTime = Math.min(MAX_THUMBNAIL_TIME_SECONDS, Math.max(0, safeDuration / 2));
         video.currentTime = targetTime;
       };
 
@@ -190,7 +192,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
             finish(thumbFile);
           },
           "image/jpeg",
-          0.85,
+          THUMBNAIL_JPEG_QUALITY,
         );
       };
 
