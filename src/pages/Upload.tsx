@@ -131,7 +131,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
-  const MAX_THUMBNAIL_TIME_SECONDS = 1;
+  const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
   const THUMBNAIL_JPEG_QUALITY = 0.85;
 
   const createVideoThumbnail = (file: File): Promise<File | null> =>
@@ -162,7 +162,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       video.onloadedmetadata = () => {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
-        const targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_TIME_SECONDS);
+        const targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
         video.currentTime = targetTime;
       };
 

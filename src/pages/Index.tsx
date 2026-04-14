@@ -86,6 +86,7 @@ const Index = () => {
   const [dbCreators, setDbCreators] = useState<any[]>([]);
   const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const getMonetizedStatus = (value?: boolean) => isAdmin && !!value;
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -141,11 +142,11 @@ const Index = () => {
           duration: formatDuration(v.duration),
           thumbnail: v.thumbnail_url ?? thumb1,
           avatar: p?.avatar_url ?? album1,
-          isMonetized: isAdmin && (p?.is_monetized ?? false),
+          isMonetized: getMonetizedStatus(p?.is_monetized),
           category: v.category,
         };
       })
-    : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: isAdmin && v.isMonetized }));
+    : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: getMonetizedStatus(v.isMonetized) }));
 
   const videoCards = activeVideoCategory === "Trending"
     ? allVideoCards.slice(0, 8)
