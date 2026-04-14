@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, SlidersHorizontal, X, Play, Music, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import VideoCard from "@/components/VideoCard";
 import AudioCard from "@/components/AudioCard";
@@ -39,6 +40,7 @@ const contentTypes: { value: ContentType; label: string; icon: React.ReactNode }
 ];
 
 const Search = () => {
+  const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
   const initialType = (searchParams.get("type") as ContentType) ?? "all";
@@ -98,9 +100,12 @@ const Search = () => {
     blgs.forEach((b: any) => userIds.add(b.user_id));
 
     if (userIds.size > 0) {
+      const profileSelect = isAdmin
+        ? "user_id, display_name, avatar_url, is_monetized"
+        : "user_id, display_name, avatar_url";
       const { data: profs } = await supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url, is_monetized")
+        .select(profileSelect)
         .in("user_id", Array.from(userIds));
       const map: Record<string, any> = {};
       (profs ?? []).forEach((p: any) => { map[p.user_id] = p; });
@@ -145,7 +150,7 @@ const Search = () => {
       duration: formatDuration(v.duration),
       thumbnail: v.thumbnail_url ?? thumb1,
       avatar: p?.avatar_url ?? album1,
-      isMonetized: p?.is_monetized ?? false,
+      isMonetized: isAdmin ? (p?.is_monetized ?? false) : false,
     };
   });
 

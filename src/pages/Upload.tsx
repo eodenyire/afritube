@@ -132,6 +132,76 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
 
+  const createVideoThumbnail = (file: File): Promise<File | null> =>
+    new Promise((resolve) => {
+      const video = document.createElement("video");
+      const canvas = document.createElement("canvas");
+      const url = URL.createObjectURL(file);
+      let settled = false;
+      let captured = false;
+
+      const cleanup = () => {
+        URL.revokeObjectURL(url);
+        video.removeAttribute("src");
+        video.load();
+      };
+
+      const finish = (result: File | null) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(result);
+      };
+
+      video.preload = "metadata";
+      video.src = url;
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadedmetadata = () => {
+        const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
+        const targetTime = Math.min(1, Math.max(0, safeDuration / 2));
+        video.currentTime = targetTime;
+      };
+
+      const captureFrame = () => {
+        if (captured) return;
+        captured = true;
+        if (!video.videoWidth || !video.videoHeight) {
+          finish(null);
+          return;
+        }
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          finish(null);
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              finish(null);
+              return;
+            }
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            const thumbFile = new File([blob], `${baseName}-thumbnail.jpg`, { type: "image/jpeg" });
+            finish(thumbFile);
+          },
+          "image/jpeg",
+          0.85,
+        );
+      };
+
+      video.onseeked = captureFrame;
+      video.onloadeddata = () => {
+        if (video.currentTime === 0) captureFrame();
+      };
+
+      video.onerror = () => finish(null);
+    });
+
   const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
     new Promise((resolve) => {
       const el = document.createElement(type) as HTMLVideoElement | HTMLAudioElement;
@@ -156,9 +226,10 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
 
       let thumbnailUrl: string | null = null;
-      if (thumbFile) {
-        const thumbPath = `${userId}/${Date.now()}-${thumbFile.name}`;
-        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, thumbFile);
+      const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
+      if (finalThumbFile) {
+        const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
+        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
         if (tErr) throw tErr;
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
       }
@@ -186,7 +257,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   return (
     <div className="space-y-6 mt-6">
       <FileDropZone accept="video/*" label="Upload your video" icon={<Video size={32} />} file={videoFile} onFileSelect={setVideoFile} onClear={() => setVideoFile(null)} />
-      <FileDropZone accept="image/*" label="Upload thumbnail (optional)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
+      <FileDropZone accept="image/*" label="Upload thumbnail (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
       <div className="space-y-4">
         <div>
           <Label htmlFor="v-title">Title</Label>
