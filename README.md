@@ -19,7 +19,7 @@ AfriTube implements a strict but achievable monetization gateway to ensure quali
 * **Creator Management:** Review creator engagement, subscriber counts, and monetization status.
 * **Content Oversight:** Manage videos, tracks, and blog posts from a single dashboard.
 
-### 3. User Experience & Auth
+### 4. User Experience & Auth
 * **Hybrid Access:** Users can browse and watch content anonymously or create an account for a personalized experience.
 * **Unified Auth:** Secure login via **Email**, **Google**, and **Apple** (powered by Lovable Cloud).
 * **Smart Profiles:** Automatic profile generation including bios, avatars, and creator metrics.

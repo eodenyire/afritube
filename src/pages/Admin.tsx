@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Eye, Heart, Loader2, Music, ShieldCheck, Trash2, Users, Video } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -97,7 +97,7 @@ const Admin = () => {
     }
   }, [authLoading, user, navigate]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const [profilesRes, videosRes, audiosRes, blogsRes, likesRes] = await Promise.all([
       supabase.from("profiles").select("user_id, display_name, avatar_url, subscriber_count, watch_hours, is_monetized, created_at"),
@@ -177,12 +177,12 @@ const Admin = () => {
     setAudios(audioRows);
     setBlogs(blogRows);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (!user || !isAdmin) return;
     loadData();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, loadData]);
 
   const handleDelete = async (table: "videos" | "audio_tracks" | "blog_posts", id: string) => {
     const { error } = await supabase.from(table).delete().eq("id", id);
