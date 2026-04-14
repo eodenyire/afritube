@@ -144,7 +144,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
       let captured = false;
       let targetTime = 0;
       let metadataLoaded = false;
-      let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
+      let thumbnailTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
@@ -155,14 +155,14 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const finish = (result: File | null) => {
         if (settled) return;
         settled = true;
-        if (timeoutId) {
-          window.clearTimeout(timeoutId);
+        if (thumbnailTimeoutId) {
+          window.clearTimeout(thumbnailTimeoutId);
         }
         cleanup();
         resolve(result);
       };
 
-      timeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
+      thumbnailTimeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
 
       const captureFrame = () => {
         if (captured) return;
@@ -196,11 +196,11 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       const scheduleCapture = () => {
         if (captured) return;
-        const withFrameCallback = video as HTMLVideoElement & {
+        const videoWithFrameCallback = video as HTMLVideoElement & {
           requestVideoFrameCallback?: (callback: () => void) => number;
         };
-        if (withFrameCallback.requestVideoFrameCallback) {
-          withFrameCallback.requestVideoFrameCallback(() => captureFrame());
+        if (videoWithFrameCallback.requestVideoFrameCallback) {
+          videoWithFrameCallback.requestVideoFrameCallback(() => captureFrame());
           return;
         }
         requestAnimationFrame(() => captureFrame());
@@ -219,7 +219,11 @@ function VideoUploadForm({ userId }: { userId: string }) {
           try {
             video.currentTime = targetTime;
           } catch (error) {
-            console.warn("Thumbnail seek failed; capturing the first frame instead.", error);
+            console.warn("Thumbnail seek failed; capturing the first frame instead.", {
+              error,
+              targetTime,
+              duration: safeDuration,
+            });
             scheduleCapture();
           }
         } else if (video.readyState >= 2) {
