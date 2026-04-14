@@ -143,6 +143,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
       let settled = false;
       let captured = false;
       let targetTime = 0;
+      let timeoutId = 0;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
@@ -158,7 +159,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         resolve(result);
       };
 
-      const timeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
+      timeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
 
       const captureFrame = () => {
         if (captured) return;
@@ -202,7 +203,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         requestAnimationFrame(() => captureFrame());
       };
 
-      video.preload = "auto";
+      video.preload = "metadata";
       video.src = url;
       video.muted = true;
       video.playsInline = true;
@@ -214,6 +215,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
           try {
             video.currentTime = targetTime;
           } catch {
+            console.warn("Thumbnail seek failed; capturing the first frame instead.");
             scheduleCapture();
           }
         }
@@ -224,7 +226,6 @@ function VideoUploadForm({ userId }: { userId: string }) {
         if (targetTime === 0) scheduleCapture();
       }, { once: true });
       video.addEventListener("error", () => finish(null), { once: true });
-      video.load();
     });
 
   const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
