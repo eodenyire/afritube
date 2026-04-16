@@ -162,12 +162,16 @@ function VideoUploadForm({ userId }: { userId: string }) {
         resolve(result);
       };
 
-      thumbnailTimeoutId = window.setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
+      thumbnailTimeoutId = window.setTimeout(() => {
+        console.warn("Thumbnail generation timeout after", THUMBNAIL_TIMEOUT_MS, "ms");
+        finish(null);
+      }, THUMBNAIL_TIMEOUT_MS);
 
       const captureFrame = () => {
         if (captured) return;
         captured = true;
         if (!video.videoWidth || !video.videoHeight) {
+          console.warn("Video dimensions not available:", { width: video.videoWidth, height: video.videoHeight });
           finish(null);
           return;
         }
@@ -175,6 +179,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
+          console.warn("Failed to get canvas 2D context");
           finish(null);
           return;
         }
@@ -182,11 +187,13 @@ function VideoUploadForm({ userId }: { userId: string }) {
         canvas.toBlob(
           (blob) => {
             if (!blob) {
+              console.warn("Canvas toBlob returned null");
               finish(null);
               return;
             }
             const baseName = file.name.replace(/\.[^/.]+$/, "");
             const thumbFile = new File([blob], `${baseName}-thumbnail.jpg`, { type: "image/jpeg" });
+            console.log("Thumbnail generated successfully:", { name: thumbFile.name, size: thumbFile.size });
             finish(thumbFile);
           },
           "image/jpeg",
@@ -215,6 +222,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
         metadataLoaded = true;
         targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
+        console.log("Video metadata loaded:", { duration: safeDuration, targetTime });
         if (targetTime > 0) {
           try {
             video.currentTime = targetTime;
@@ -231,11 +239,20 @@ function VideoUploadForm({ userId }: { userId: string }) {
         }
       }, { once: true });
 
-      video.addEventListener("seeked", () => scheduleCapture(), { once: true });
-      video.addEventListener("loadeddata", () => {
-        if (metadataLoaded && targetTime === 0) scheduleCapture();
+      video.addEventListener("seeked", () => {
+        console.log("Video seeked to:", video.currentTime);
+        scheduleCapture();
       }, { once: true });
-      video.addEventListener("error", () => finish(null), { once: true });
+      video.addEventListener("loadeddata", () => {
+        if (metadataLoaded && targetTime === 0) {
+          console.log("Video data loaded, capturing frame");
+          scheduleCapture();
+        }
+      }, { once: true });
+      video.addEventListener("error", (e) => {
+        console.error("Video element error:", e);
+        finish(null);
+      }, { once: true });
     });
 
   const getFileDuration = (file: File, type: "video" | "audio"): Promise<number> =>
@@ -254,28 +271,36 @@ function VideoUploadForm({ userId }: { userId: string }) {
     }
     setUploading(true);
     try {
+      console.log("Starting video upload:", { fileName: videoFile.name, size: videoFile.size });
       const duration = await getFileDuration(videoFile, "video");
+      console.log("Video duration:", duration);
 
       const videoPath = `${userId}/${Date.now()}-${videoFile.name}`;
+      console.log("Uploading video to:", videoPath);
       const { error: vErr } = await supabase.storage.from("videos").upload(videoPath, videoFile);
-      if (vErr) throw vErr;
+      if (vErr) throw new Error(`Video upload failed: ${vErr.message}`);
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
+      console.log("Video uploaded successfully:", videoUrl);
 
       let thumbnailUrl: string | null = null;
+      console.log("Generating thumbnail...");
       const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
       if (!finalThumbFile) {
+        console.warn("Thumbnail generation failed or skipped");
         toast({
           title: "Thumbnail skipped",
           description: "We couldn't auto-generate a thumbnail. You can upload one later.",
         });
-      }
-      if (finalThumbFile) {
+      } else {
+        console.log("Uploading thumbnail:", { name: finalThumbFile.name, size: finalThumbFile.size });
         const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
         const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
-        if (tErr) throw tErr;
+        if (tErr) throw new Error(`Thumbnail upload failed: ${tErr.message}`);
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
+        console.log("Thumbnail uploaded successfully:", thumbnailUrl);
       }
 
+      console.log("Saving video to database:", { title, thumbnailUrl });
       const { error: dbErr } = await supabase.from("videos").insert({
         user_id: userId,
         title: title.trim(),
@@ -285,11 +310,13 @@ function VideoUploadForm({ userId }: { userId: string }) {
         category,
         duration,
       });
-      if (dbErr) throw dbErr;
+      if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
+      console.log("Video saved to database successfully");
 
       toast({ title: "Video uploaded! 🎬", description: "Your video is now live on AfriTube." });
       navigate("/");
     } catch (err: any) {
+      console.error("Video upload error:", err);
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -345,6 +372,58 @@ function AudioUploadForm({ userId }: { userId: string }) {
       el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
     });
 
+  const createAudioCoverArt = (title: string, artist: string): Promise<File> =>
+    new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 300;
+      canvas.height = 300;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        // Fallback: create a simple colored canvas
+        resolve(new File([canvas.toDataURL()], "cover.jpg", { type: "image/jpeg" }));
+        return;
+      }
+
+      // Create a gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 300, 300);
+      gradient.addColorStop(0, "#FF6B35");
+      gradient.addColorStop(1, "#004E89");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 300, 300);
+
+      // Add music note icon
+      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      ctx.font = "bold 120px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("♪", 150, 100);
+
+      // Add title
+      ctx.fillStyle = "white";
+      ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(title.substring(0, 20), 150, 200);
+
+      // Add artist
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.fillText(artist.substring(0, 25), 150, 230);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(new File([], "cover.jpg", { type: "image/jpeg" }));
+            return;
+          }
+          const coverFile = new File([blob], "audio-cover.jpg", { type: "image/jpeg" });
+          console.log("Audio cover art generated:", { name: coverFile.name, size: coverFile.size });
+          resolve(coverFile);
+        },
+        "image/jpeg",
+        0.85,
+      );
+    });
+
   const handleSubmit = async () => {
     if (!audioFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and audio file are required.", variant: "destructive" });
@@ -352,21 +431,29 @@ function AudioUploadForm({ userId }: { userId: string }) {
     }
     setUploading(true);
     try {
+      console.log("Starting audio upload:", { fileName: audioFile.name, size: audioFile.size });
       const duration = await getFileDuration(audioFile);
+      console.log("Audio duration:", duration);
 
       const audioPath = `${userId}/${Date.now()}-${audioFile.name}`;
+      console.log("Uploading audio to:", audioPath);
       const { error: aErr } = await supabase.storage.from("audio").upload(audioPath, audioFile);
-      if (aErr) throw aErr;
+      if (aErr) throw new Error(`Audio upload failed: ${aErr.message}`);
       const audioUrl = supabase.storage.from("audio").getPublicUrl(audioPath).data.publicUrl;
+      console.log("Audio uploaded successfully:", audioUrl);
 
       let coverUrl: string | null = null;
-      if (coverFile) {
-        const coverPath = `${userId}/${Date.now()}-${coverFile.name}`;
-        const { error: cErr } = await supabase.storage.from("thumbnails").upload(coverPath, coverFile);
-        if (cErr) throw cErr;
+      const finalCoverFile = coverFile ?? await createAudioCoverArt(title, artistName || "Unknown Artist");
+      if (finalCoverFile) {
+        console.log("Uploading cover art:", { name: finalCoverFile.name, size: finalCoverFile.size });
+        const coverPath = `${userId}/${Date.now()}-${finalCoverFile.name}`;
+        const { error: cErr } = await supabase.storage.from("thumbnails").upload(coverPath, finalCoverFile);
+        if (cErr) throw new Error(`Cover upload failed: ${cErr.message}`);
         coverUrl = supabase.storage.from("thumbnails").getPublicUrl(coverPath).data.publicUrl;
+        console.log("Cover art uploaded successfully:", coverUrl);
       }
 
+      console.log("Saving audio to database:", { title, coverUrl });
       const { error: dbErr } = await supabase.from("audio_tracks").insert({
         user_id: userId,
         title: title.trim(),
@@ -377,11 +464,13 @@ function AudioUploadForm({ userId }: { userId: string }) {
         genre,
         duration,
       });
-      if (dbErr) throw dbErr;
+      if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
+      console.log("Audio saved to database successfully");
 
       toast({ title: "Track uploaded! 🎵", description: "Your music is now streaming on AfriTube." });
       navigate("/");
     } catch (err: any) {
+      console.error("Audio upload error:", err);
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -391,7 +480,7 @@ function AudioUploadForm({ userId }: { userId: string }) {
   return (
     <div className="space-y-6 mt-6">
       <FileDropZone accept="audio/*" label="Upload your track" icon={<Music size={32} />} file={audioFile} onFileSelect={setAudioFile} onClear={() => setAudioFile(null)} />
-      <FileDropZone accept="image/*" label="Upload cover art (optional)" icon={<ImagePlus size={32} />} file={coverFile} onFileSelect={setCoverFile} onClear={() => setCoverFile(null)} />
+      <FileDropZone accept="image/*" label="Upload cover art (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={coverFile} onFileSelect={setCoverFile} onClear={() => setCoverFile(null)} />
       <div className="space-y-4">
         <div>
           <Label htmlFor="a-title">Title</Label>
@@ -431,6 +520,88 @@ function BlogUploadForm({ userId }: { userId: string }) {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("General");
 
+  const createBlogCoverImage = (title: string, category: string): Promise<File> =>
+    new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 630;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(new File([], "cover.jpg", { type: "image/jpeg" }));
+        return;
+      }
+
+      // Create a gradient background based on category
+      const categoryColors: Record<string, [string, string]> = {
+        "Fashion": ["#FF1493", "#FFB6C1"],
+        "Art & Culture": ["#8B4513", "#DEB887"],
+        "Technology": ["#1E90FF", "#87CEEB"],
+        "Food": ["#FF8C00", "#FFD700"],
+        "Travel": ["#228B22", "#90EE90"],
+        "Music": ["#9932CC", "#DDA0DD"],
+        "Sports": ["#DC143C", "#FF6347"],
+        "Opinion": ["#4169E1", "#6495ED"],
+        "Lifestyle": ["#FF69B4", "#FFB6C1"],
+        "General": ["#696969", "#A9A9A9"],
+      };
+
+      const [color1, color2] = categoryColors[category] || categoryColors["General"];
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 1200, 630);
+
+      // Add semi-transparent overlay
+      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+      ctx.fillRect(0, 0, 1200, 630);
+
+      // Add title
+      ctx.fillStyle = "white";
+      ctx.font = "bold 48px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const maxWidth = 1100;
+      const words = title.split(" ");
+      let line = "";
+      let y = 200;
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + (line ? " " : "") + words[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line) {
+          ctx.fillText(line, 600, y);
+          line = words[i];
+          y += 60;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) ctx.fillText(line, 600, y);
+
+      // Add category badge
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.fillRect(50, 50, 200, 50);
+      ctx.fillStyle = color1;
+      ctx.font = "bold 16px Arial";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(category, 70, 75);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(new File([], "cover.jpg", { type: "image/jpeg" }));
+            return;
+          }
+          const coverFile = new File([blob], "blog-cover.jpg", { type: "image/jpeg" });
+          console.log("Blog cover image generated:", { name: coverFile.name, size: coverFile.size });
+          resolve(coverFile);
+        },
+        "image/jpeg",
+        0.85,
+      );
+    });
+
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
       toast({ title: "Missing fields", description: "Title and content are required.", variant: "destructive" });
@@ -438,14 +609,19 @@ function BlogUploadForm({ userId }: { userId: string }) {
     }
     setUploading(true);
     try {
+      console.log("Starting blog upload:", { title, category });
       let coverUrl: string | null = null;
-      if (coverFile) {
-        const coverPath = `${userId}/${Date.now()}-${coverFile.name}`;
-        const { error: cErr } = await supabase.storage.from("blog-images").upload(coverPath, coverFile);
-        if (cErr) throw cErr;
+      const finalCoverFile = coverFile ?? await createBlogCoverImage(title, category);
+      if (finalCoverFile && finalCoverFile.size > 0) {
+        console.log("Uploading cover image:", { name: finalCoverFile.name, size: finalCoverFile.size });
+        const coverPath = `${userId}/${Date.now()}-${finalCoverFile.name}`;
+        const { error: cErr } = await supabase.storage.from("blog-images").upload(coverPath, finalCoverFile);
+        if (cErr) throw new Error(`Cover upload failed: ${cErr.message}`);
         coverUrl = supabase.storage.from("blog-images").getPublicUrl(coverPath).data.publicUrl;
+        console.log("Cover image uploaded successfully:", coverUrl);
       }
 
+      console.log("Saving blog to database:", { title, coverUrl });
       const { error: dbErr } = await supabase.from("blog_posts").insert({
         user_id: userId,
         title: title.trim(),
@@ -454,11 +630,13 @@ function BlogUploadForm({ userId }: { userId: string }) {
         cover_url: coverUrl,
         category,
       });
-      if (dbErr) throw dbErr;
+      if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
+      console.log("Blog saved to database successfully");
 
       toast({ title: "Blog published! ✍️", description: "Your story is now live on AfriTube." });
       navigate("/");
     } catch (err: any) {
+      console.error("Blog upload error:", err);
       toast({ title: "Publish failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -467,7 +645,7 @@ function BlogUploadForm({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6 mt-6">
-      <FileDropZone accept="image/*" label="Upload cover image (optional)" icon={<ImagePlus size={32} />} file={coverFile} onFileSelect={setCoverFile} onClear={() => setCoverFile(null)} />
+      <FileDropZone accept="image/*" label="Upload cover image (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={coverFile} onFileSelect={setCoverFile} onClear={() => setCoverFile(null)} />
       <div className="space-y-4">
         <div>
           <Label htmlFor="b-title">Title</Label>
