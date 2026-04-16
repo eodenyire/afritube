@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,12 +39,13 @@ const Watch = () => {
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
 
   useWatchTimeTracker({
     videoId: id ?? "",
     creatorUserId: video?.user_id ?? "",
-    videoElement: videoRef.current,
+    videoElement,
   });
 
   useEffect(() => {
