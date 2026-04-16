@@ -293,6 +293,66 @@ export type Database = {
         }
         Relationships: []
       }
+      playlists: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          cover_url: string | null
+          playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
+          is_published: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          cover_url?: string | null
+          playlist_type?: "album" | "ep" | "compilation" | "custom" | "watch_later"
+          is_published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          cover_url?: string | null
+          playlist_type?: "album" | "ep" | "compilation" | "custom" | "watch_later"
+          is_published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      playlist_items: {
+        Row: {
+          id: string
+          playlist_id: string
+          video_id: string
+          position: number
+          added_at: string
+        }
+        Insert: {
+          id?: string
+          playlist_id: string
+          video_id: string
+          position: number
+          added_at?: string
+        }
+        Update: {
+          id?: string
+          playlist_id?: string
+          video_id?: string
+          position?: number
+          added_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -310,6 +370,37 @@ export type Database = {
       check_monetization_eligibility: {
         Args: { p_user_id: string }
         Returns: boolean
+      }
+      create_playlist: {
+        Args: {
+          p_title: string
+          p_description?: string | null
+          p_cover_url?: string | null
+          p_playlist_type?: string
+        }
+        Returns: string
+      }
+      add_video_to_playlist: {
+        Args: {
+          p_playlist_id: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
+      remove_video_from_playlist: {
+        Args: {
+          p_playlist_id: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
+      reorder_playlist_items: {
+        Args: {
+          p_playlist_id: string
+          p_video_id: string
+          p_new_position: number
+        }
+        Returns: undefined
       }
     }
     Enums: {

@@ -194,3 +194,4 @@ Storage policies mirror the same pattern — anyone can read, authenticated user
 | Ad serving integration | Not started |
 | Revenue tracking table | Not started |
 | Content moderation | Not started |
+| **Playlists/Albums** | **✅ Implemented** |
