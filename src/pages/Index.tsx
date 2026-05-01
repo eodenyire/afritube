@@ -111,15 +111,15 @@ const Index = () => {
         const profileSelect = isAdmin
           ? "user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours"
           : "user_id, display_name, avatar_url";
-        const { data: profs } = await supabase
-          .from("profiles")
+        const { data: profs } = await (supabase
+          .from("profiles") as any)
           .select(profileSelect)
           .in("user_id", Array.from(userIds));
         const map: Record<string, any> = {};
-        (profs ?? []).forEach((p) => { map[p.user_id] = p; });
+        ((profs ?? []) as any[]).forEach((p) => { map[p.user_id] = p; });
         setProfiles(map);
         // Use these profiles as creators
-        setDbCreators(profs ?? []);
+        setDbCreators((profs ?? []) as any[]);
       }
 
       setDbVideos(videos);

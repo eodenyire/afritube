@@ -84,8 +84,8 @@ const CreatorProfile = () => {
         : "user_id, display_name, avatar_url, bio, created_at";
       const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }] =
         await Promise.all([
-          supabase
-            .from("profiles")
+          (supabase
+            .from("profiles") as any)
             .select(profileSelect)
             .eq("user_id", userId)
             .single(),
@@ -108,7 +108,7 @@ const CreatorProfile = () => {
             .eq("is_published", true)
             .order("created_at", { ascending: false }),
         ]);
-      setProfile(prof);
+      setProfile(prof as any);
       setVideos(vids ?? []);
       setAudio(tracks ?? []);
       setBlogs(posts ?? []);

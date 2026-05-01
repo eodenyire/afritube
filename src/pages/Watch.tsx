@@ -94,12 +94,12 @@ const Watch = () => {
       const profileSelect = canViewEligibility
         ? "display_name, avatar_url, subscriber_count, is_monetized"
         : "display_name, avatar_url";
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
         .select(profileSelect)
         .eq("user_id", vid.user_id)
         .single();
-      setCreator(profile);
+      setCreator(profile as any);
 
       // Fetch related videos (same category, exclude current)
       const { data: rel } = await supabase
