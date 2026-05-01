@@ -43,13 +43,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-
-  const isAdminUser = (authUser: User | null) =>
-    !!authUser?.email && adminEmails.includes(authUser.email.toLowerCase());
+  const fetchAdmin = async (userId: string | undefined | null) => {
+    if (!userId) {
+      setIsAdmin(false);
+      return;
+    }
+    const { data, error } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (error) {
+      console.error("has_role check failed:", error);
+      setIsAdmin(false);
+    } else {
+      setIsAdmin(!!data);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -62,14 +71,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setIsAdmin(isAdminUser(session?.user ?? null));
         if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+            fetchAdmin(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
         setLoading(false);
       }
@@ -78,9 +90,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setIsAdmin(isAdminUser(session?.user ?? null));
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchAdmin(session.user.id);
       }
       setLoading(false);
     });
