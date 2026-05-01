@@ -10,15 +10,17 @@ interface VideoCardProps {
   channel: string;
   views: string;
   duration: string;
-  thumbnail: string;
+  thumbnail: string | null;
   avatar: string;
   isMonetized?: boolean;
 }
 
 const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isMonetized }: VideoCardProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const Wrapper = id ? Link : "div";
   const wrapperProps = id ? { to: `/watch/${id}` } : {};
+  const showPlaceholder = !thumbnail || imgError;
 
   return (
     <div className="relative">
@@ -29,7 +31,21 @@ const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isM
           className="group cursor-pointer"
         >
           <div className="relative rounded-xl overflow-hidden aspect-video bg-secondary mb-3">
-            <img src={thumbnail} alt={title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            {showPlaceholder ? (
+              <div className="absolute inset-0 bg-gradient-to-br from-secondary via-card to-background flex flex-col items-center justify-center p-4">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                  <Play size={20} className="text-primary ml-0.5" fill="currentColor" />
+                </div>
+                <p className="text-xs text-muted-foreground text-center line-clamp-2 px-2">{title}</p>
+              </div>
+            ) : (
+              <img
+                src={thumbnail}
+                alt={title}
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
               <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity scale-75 group-hover:scale-100">
                 <Play size={20} className="text-primary-foreground ml-0.5" fill="currentColor" />
@@ -70,7 +86,7 @@ const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isM
         <VideoContextMenu
           videoId={id}
           title={title}
-          thumbnailUrl={thumbnail}
+          thumbnailUrl={thumbnail ?? ""}
           onClose={() => setMenuOpen(false)}
         />
       )}
