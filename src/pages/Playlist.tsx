@@ -241,6 +241,7 @@ const Playlist = () => {
                       views={String(video.views ?? 0)}
                       duration={String(video.duration ?? 0)}
                       thumbnail={video.thumbnail_url ?? ""}
+                      avatar=""
                     />
                   </div>
                   {isOwner && (
