@@ -144,7 +144,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
       let captured = false;
       let targetTime = 0;
       let metadataLoaded = false;
-      let thumbnailTimeoutId: ReturnType<typeof window.setTimeout> | undefined;
+      let thumbnailTimeoutId: any;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
