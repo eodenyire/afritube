@@ -58,16 +58,16 @@ const Playlist = () => {
       // Fetch videos in playlist
       if (playlistData.items.length > 0) {
         const videoIds = playlistData.items.map((item) => item.video_id);
-        const { data: videosData } = await supabase
-          .from("videos")
+        const { data: videosData } = await (supabase
+          .from("videos") as any)
           .select("*, profiles(display_name)")
           .in("id", videoIds);
 
         if (videosData) {
           // Sort by playlist order
-          const orderedVideos = playlistData.items
-            .map((item) => videosData.find((v) => v.id === item.video_id))
-            .filter(Boolean) as VideoWithDetails[];
+          const orderedVideos = (playlistData.items
+            .map((item) => (videosData as any[]).find((v: any) => v.id === item.video_id))
+            .filter(Boolean)) as unknown as VideoWithDetails[];
           setVideos(orderedVideos);
         }
       }
@@ -238,8 +238,8 @@ const Playlist = () => {
                       id={video.id}
                       title={video.title}
                       channel={video.profiles?.display_name ?? "Unknown"}
-                      views={video.views}
-                      duration={video.duration}
+                      views={String(video.views ?? 0)}
+                      duration={String(video.duration ?? 0)}
                       thumbnailUrl={video.thumbnail_url}
                       onPress={() => navigate(`/watch/${video.id}`)}
                     />
