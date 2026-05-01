@@ -240,8 +240,7 @@ const Playlist = () => {
                       channel={video.profiles?.display_name ?? "Unknown"}
                       views={String(video.views ?? 0)}
                       duration={String(video.duration ?? 0)}
-                      thumbnailUrl={video.thumbnail_url}
-                      onPress={() => navigate(`/watch/${video.id}`)}
+                      thumbnail={video.thumbnail_url ?? ""}
                     />
                   </div>
                   {isOwner && (
