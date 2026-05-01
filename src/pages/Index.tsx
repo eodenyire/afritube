@@ -141,7 +141,7 @@ const Index = () => {
           channel: p?.display_name ?? "Unknown",
           views: formatViews(v.views),
           duration: formatDuration(v.duration),
-          thumbnail: v.thumbnail_url ?? thumb1,
+          thumbnail: v.thumbnail_url ?? null,
           avatar: p?.avatar_url ?? album1,
           isMonetized: getMonetizedStatus(p?.is_monetized),
           category: v.category,
