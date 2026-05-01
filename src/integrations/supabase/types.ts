@@ -134,6 +134,80 @@ export type Database = {
         }
         Relationships: []
       }
+      playlist_items: {
+        Row: {
+          added_at: string
+          audio_id: string | null
+          id: string
+          playlist_id: string
+          position: number
+          video_id: string | null
+        }
+        Insert: {
+          added_at?: string
+          audio_id?: string | null
+          id?: string
+          playlist_id: string
+          position?: number
+          video_id?: string | null
+        }
+        Update: {
+          added_at?: string
+          audio_id?: string | null
+          id?: string
+          playlist_id?: string
+          position?: number
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          is_published: boolean
+          playlist_type: Database["public"]["Enums"]["playlist_type"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          is_published?: boolean
+          playlist_type?: Database["public"]["Enums"]["playlist_type"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          is_published?: boolean
+          playlist_type?: Database["public"]["Enums"]["playlist_type"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -319,6 +393,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_video_to_playlist: {
+        Args: { p_playlist_id: string; p_video_id: string }
+        Returns: undefined
+      }
       add_watch_time: {
         Args: {
           p_creator_id: string
@@ -332,6 +410,15 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      create_playlist: {
+        Args: {
+          p_cover_url?: string
+          p_description?: string
+          p_playlist_type?: Database["public"]["Enums"]["playlist_type"]
+          p_title: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -340,9 +427,22 @@ export type Database = {
         Returns: boolean
       }
       increment_streams: { Args: { track_id: string }; Returns: undefined }
+      remove_video_from_playlist: {
+        Args: { p_playlist_id: string; p_video_id: string }
+        Returns: undefined
+      }
+      reorder_playlist_items: {
+        Args: {
+          p_new_position: number
+          p_playlist_id: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -471,6 +571,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      playlist_type: ["album", "ep", "compilation", "custom", "watch_later"],
     },
   },
 } as const
