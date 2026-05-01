@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { backfillVideoThumbnail } from "@/lib/videoThumbnail";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +48,20 @@ const Watch = () => {
     creatorUserId: video?.user_id ?? "",
     videoElement,
   });
+
+  // Auto-backfill missing thumbnails when the owner watches their own video.
+  const backfillAttempted = useRef<string | null>(null);
+  useEffect(() => {
+    if (!video || !user) return;
+    if (video.thumbnail_url) return;
+    if (user.id !== video.user_id) return;
+    if (backfillAttempted.current === video.id) return;
+    backfillAttempted.current = video.id;
+
+    backfillVideoThumbnail(video.id, video.video_url, video.user_id).then((url) => {
+      if (url) setVideo((v) => (v ? { ...v, thumbnail_url: url } : v));
+    });
+  }, [video, user]);
 
   useEffect(() => {
     if (!id) return;
