@@ -62,6 +62,12 @@ const formatViews = (n: number) => {
   return n.toString();
 };
 
+const parseViews = (v: string) => {
+  if (v.endsWith("M")) return parseFloat(v) * 1_000_000;
+  if (v.endsWith("K")) return parseFloat(v) * 1_000;
+  return parseFloat(v) || 0;
+};
+
 const formatDuration = (seconds: number | null) => {
   if (!seconds) return "0:00";
   const h = Math.floor(seconds / 3600);
@@ -150,14 +156,7 @@ const Index = () => {
     : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: getMonetizedStatus(v.isMonetized) }));
 
   const videoCards = activeVideoCategory === "Trending"
-    ? [...allVideoCards].sort((a, b) => {
-        const parseViews = (v: string) => {
-          if (v.endsWith("M")) return parseFloat(v) * 1_000_000;
-          if (v.endsWith("K")) return parseFloat(v) * 1_000;
-          return parseFloat(v) || 0;
-        };
-        return parseViews(b.views) - parseViews(a.views);
-      }).slice(0, 8)
+    ? [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8)
     : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
 
   const audioCards = dbAudios.length > 0

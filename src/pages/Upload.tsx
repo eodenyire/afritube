@@ -202,8 +202,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
         if (videoWithFrameCallback.requestVideoFrameCallback) {
           videoWithFrameCallback.requestVideoFrameCallback(() => captureFrame());
         } else {
-          // Use a small delay to ensure the decoded frame is rendered after a seek
-          setTimeout(captureFrame, 200);
+          // Use a short delay (~2 frames at 30fps) to ensure the decoded frame is rendered
+          setTimeout(captureFrame, 50);
         }
       };
 
