@@ -83,10 +83,8 @@ const Auth = () => {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <a href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-gradient-gold flex items-center justify-center font-display font-bold text-primary-foreground text-xl">
-              A
-            </div>
+          <a href="/" className="inline-flex items-center gap-0 mb-6">
+            <img src="/favicon.png" alt="AfriTube logo" className="h-10 w-10 object-contain -mr-2" />
             <span className="font-display font-bold text-2xl text-foreground">
               Afri<span className="text-gradient-gold">Tube</span>
             </span>
