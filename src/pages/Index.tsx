@@ -62,6 +62,12 @@ const formatViews = (n: number) => {
   return n.toString();
 };
 
+const parseViews = (v: string) => {
+  if (v.endsWith("M")) return parseFloat(v) * 1_000_000;
+  if (v.endsWith("K")) return parseFloat(v) * 1_000;
+  return parseFloat(v) || 0;
+};
+
 const formatDuration = (seconds: number | null) => {
   if (!seconds) return "0:00";
   const h = Math.floor(seconds / 3600);
@@ -92,7 +98,7 @@ const Index = () => {
   useEffect(() => {
     const fetchAll = async () => {
       const [videosRes, audiosRes, blogsRes] = await Promise.all([
-        supabase.from("videos").select("*").eq("is_published", true).order("views", { ascending: false }).limit(8),
+        supabase.from("videos").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(20),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
       ]);
@@ -150,7 +156,7 @@ const Index = () => {
     : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: getMonetizedStatus(v.isMonetized) }));
 
   const videoCards = activeVideoCategory === "Trending"
-    ? allVideoCards.slice(0, 8)
+    ? [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8)
     : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
 
   const audioCards = dbAudios.length > 0

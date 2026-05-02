@@ -141,13 +141,11 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const canvas = document.createElement("canvas");
       const url = URL.createObjectURL(file);
       let settled = false;
-      let captured = false;
-      let targetTime = 0;
-      let metadataLoaded = false;
-      let thumbnailTimeoutId: any;
+      let thumbnailTimeoutId: ReturnType<typeof setTimeout>;
 
       const cleanup = () => {
         URL.revokeObjectURL(url);
+        video.pause();
         video.removeAttribute("src");
         video.load();
       };
@@ -155,21 +153,17 @@ function VideoUploadForm({ userId }: { userId: string }) {
       const finish = (result: File | null) => {
         if (settled) return;
         settled = true;
-        if (thumbnailTimeoutId) {
-          window.clearTimeout(thumbnailTimeoutId);
-        }
+        clearTimeout(thumbnailTimeoutId);
         cleanup();
         resolve(result);
       };
 
-      thumbnailTimeoutId = window.setTimeout(() => {
+      thumbnailTimeoutId = setTimeout(() => {
         console.warn("Thumbnail generation timeout after", THUMBNAIL_TIMEOUT_MS, "ms");
         finish(null);
       }, THUMBNAIL_TIMEOUT_MS);
 
       const captureFrame = () => {
-        if (captured) return;
-        captured = true;
         if (!video.videoWidth || !video.videoHeight) {
           console.warn("Video dimensions not available:", { width: video.videoWidth, height: video.videoHeight });
           finish(null);
@@ -202,53 +196,49 @@ function VideoUploadForm({ userId }: { userId: string }) {
       };
 
       const scheduleCapture = () => {
-        if (captured) return;
         const videoWithFrameCallback = video as HTMLVideoElement & {
           requestVideoFrameCallback?: (callback: () => void) => number;
         };
         if (videoWithFrameCallback.requestVideoFrameCallback) {
           videoWithFrameCallback.requestVideoFrameCallback(() => captureFrame());
-          return;
+        } else {
+          // Use a short delay (~2 frames at 30fps) to ensure the decoded frame is rendered
+          setTimeout(captureFrame, 50);
         }
-        requestAnimationFrame(() => captureFrame());
       };
 
-      video.preload = "metadata";
-      video.src = url;
+      // Use preload="auto" so the browser buffers frame data, not just metadata.
+      // This is key for reliable frame capture from local files.
+      video.preload = "auto";
       video.muted = true;
       video.playsInline = true;
+      video.src = url;
 
-      video.addEventListener("loadedmetadata", () => {
+      // loadeddata fires once the current playback position has frame data available,
+      // which is the earliest safe point to seek and then capture a frame.
+      video.addEventListener("loadeddata", () => {
         const safeDuration = Number.isFinite(video.duration) ? video.duration : 0;
-        metadataLoaded = true;
-        targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
-        console.log("Video metadata loaded:", { duration: safeDuration, targetTime });
+        const targetTime = Math.min(safeDuration / 2, MAX_THUMBNAIL_SEEK_TIME_SECONDS);
+        console.log("Video data loaded:", { duration: safeDuration, targetTime });
         if (targetTime > 0) {
+          // Register the seeked listener before setting currentTime to avoid a race.
+          const onSeeked = () => {
+            console.log("Video seeked to:", video.currentTime);
+            scheduleCapture();
+          };
+          video.addEventListener("seeked", onSeeked, { once: true });
           try {
             video.currentTime = targetTime;
           } catch (error) {
-            console.warn("Thumbnail seek failed; capturing the first frame instead.", {
-              error,
-              targetTime,
-              duration: safeDuration,
-            });
+            console.warn("Thumbnail seek failed; capturing first frame instead.", error);
+            video.removeEventListener("seeked", onSeeked);
             scheduleCapture();
           }
-        } else if (video.readyState >= 2) {
+        } else {
           scheduleCapture();
         }
       }, { once: true });
 
-      video.addEventListener("seeked", () => {
-        console.log("Video seeked to:", video.currentTime);
-        scheduleCapture();
-      }, { once: true });
-      video.addEventListener("loadeddata", () => {
-        if (metadataLoaded && targetTime === 0) {
-          console.log("Video data loaded, capturing frame");
-          scheduleCapture();
-        }
-      }, { once: true });
       video.addEventListener("error", (e) => {
         console.error("Video element error:", e);
         finish(null);
