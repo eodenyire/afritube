@@ -10,6 +10,13 @@ import BlogCard from "@/components/BlogCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import thumb1 from "@/assets/thumb-1.jpg";
 import album1 from "@/assets/album-1.jpg";
@@ -53,6 +60,8 @@ const Search = () => {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [hasSearched, setHasSearched] = useState(false);
+  const [sortBy, setSortBy] = useState("relevance");
+  const [durationFilter, setDurationFilter] = useState("any");
 
   const performSearch = async (q: string) => {
     if (!q.trim()) return;
@@ -140,7 +149,24 @@ const Search = () => {
 
   const totalResults = videos.length + audios.length + blogs.length;
 
-  const videoCards = videos.map((v) => {
+  const filteredVideos = useMemo(() => {
+    let vids = [...videos];
+    if (durationFilter === "short") {
+      vids = vids.filter((v) => (v.duration ?? 0) < 240);
+    } else if (durationFilter === "medium") {
+      vids = vids.filter((v) => (v.duration ?? 0) >= 240 && (v.duration ?? 0) <= 1200);
+    } else if (durationFilter === "long") {
+      vids = vids.filter((v) => (v.duration ?? 0) > 1200);
+    }
+    if (sortBy === "date") {
+      vids = [...vids].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (sortBy === "views") {
+      vids = [...vids].sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+    }
+    return vids;
+  }, [videos, sortBy, durationFilter]);
+
+  const videoCards = filteredVideos.map((v) => {
     const p = profiles[v.user_id];
     return {
       id: v.id,
@@ -204,7 +230,7 @@ const Search = () => {
         </form>
 
         {/* Content type filters */}
-        <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
+        <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
           {contentTypes.map((ct) => (
             <Button
               key={ct.value}
@@ -222,6 +248,33 @@ const Search = () => {
             </Button>
           ))}
         </div>
+
+        {/* Sort and duration filters */}
+        {(activeType === "all" || activeType === "videos") && (
+          <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-40 h-8 text-xs rounded-full border-border bg-secondary">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="date">Upload date</SelectItem>
+                <SelectItem value="views">View count</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={durationFilter} onValueChange={setDurationFilter}>
+              <SelectTrigger className="w-44 h-8 text-xs rounded-full border-border bg-secondary">
+                <SelectValue placeholder="Duration" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any duration</SelectItem>
+                <SelectItem value="short">Short (&lt; 4 min)</SelectItem>
+                <SelectItem value="medium">Medium (4–20 min)</SelectItem>
+                <SelectItem value="long">Long (&gt; 20 min)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Results */}
         {loading ? (
