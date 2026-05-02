@@ -23,12 +23,18 @@ const formatDuration = (seconds: number | null) => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+interface Profile {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 const Subscriptions = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [videos, setVideos] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
 
   useEffect(() => {
     if (!user) {
@@ -64,11 +70,12 @@ const Subscriptions = () => {
       const vidList = vids ?? [];
       setVideos(vidList);
 
-      const { data: profs } = await (supabase.from("profiles") as any)
+      const { data: profs } = await supabase
+        .from("profiles")
         .select("user_id, display_name, avatar_url")
         .in("user_id", creatorIds);
-      const map: Record<string, any> = {};
-      ((profs ?? []) as any[]).forEach((p) => { map[p.user_id] = p; });
+      const map: Record<string, Profile> = {};
+      (profs ?? []).forEach((p) => { map[p.user_id] = p as Profile; });
       setProfiles(map);
 
       setLoading(false);

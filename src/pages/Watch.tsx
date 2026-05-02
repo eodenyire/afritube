@@ -42,6 +42,8 @@ interface CreatorProfile {
   is_monetized?: boolean;
 }
 
+const DESCRIPTION_TRUNCATE_LENGTH = 150;
+
 const Watch = () => {
   const { id } = useParams<{ id: string }>();
   const { user, isAdmin } = useAuth();
@@ -157,7 +159,10 @@ const Watch = () => {
   }, [user, id]);
 
   const handleSave = async () => {
-    if (!user) { toast.error("Sign in to save videos"); return; }
+    if (!user) {
+      toast.error("Sign in to save videos");
+      return;
+    }
     if (!id) return;
     if (watchLaterSaved) { toast("Already saved to Watch Later"); return; }
 
@@ -367,11 +372,11 @@ const Watch = () => {
             {video.description && (
               <div className="mt-4 p-4 rounded-xl bg-card border border-border">
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {video.description.length > 150 && !descExpanded
-                    ? video.description.slice(0, 150)
+                  {video.description.length > DESCRIPTION_TRUNCATE_LENGTH && !descExpanded
+                    ? video.description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)
                     : video.description}
                 </p>
-                {video.description.length > 150 && (
+                {video.description.length > DESCRIPTION_TRUNCATE_LENGTH && (
                   <span
                     className="text-primary text-sm cursor-pointer font-medium"
                     onClick={() => setDescExpanded((v) => !v)}
