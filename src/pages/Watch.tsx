@@ -128,6 +128,42 @@ const Watch = () => {
     load();
   }, [id]);
 
+  // Load playlist context when ?list= is present
+  useEffect(() => {
+    if (!listId || !id) { setPlaylistCtx(null); return; }
+    (async () => {
+      const { data: pl } = await supabase.from("playlists").select("id, title").eq("id", listId).single();
+      if (!pl) return;
+      const { data: items } = await supabase
+        .from("playlist_items")
+        .select("video_id, position")
+        .eq("playlist_id", listId)
+        .order("position", { ascending: true });
+      const videoIds = (items ?? []).map((i: any) => i.video_id).filter(Boolean);
+      if (!videoIds.length) return;
+      const { data: vids } = await supabase
+        .from("videos")
+        .select("id, title, thumbnail_url, duration")
+        .in("id", videoIds);
+      const ordered = videoIds
+        .map((vid: string) => (vids ?? []).find((v: any) => v.id === vid))
+        .filter(Boolean) as any[];
+      const idx = ordered.findIndex((v) => v.id === id);
+      setPlaylistCtx({ id: pl.id, title: pl.title, videos: ordered, currentIndex: idx });
+    })();
+  }, [listId, id]);
+
+  // Auto-advance to next video in playlist
+  useEffect(() => {
+    if (!videoElement || !playlistCtx) return;
+    const handler = () => {
+      const next = playlistCtx.videos[playlistCtx.currentIndex + 1];
+      if (next) navigate(`/watch/${next.id}?list=${playlistCtx.id}`);
+    };
+    videoElement.addEventListener("ended", handler);
+    return () => videoElement.removeEventListener("ended", handler);
+  }, [videoElement, playlistCtx, navigate]);
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "0:00";
     const m = Math.floor(seconds / 60);
