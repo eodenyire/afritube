@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SubscribeButton from "@/components/SubscribeButton";
-import { User, Eye, Clock, Play, Music, BookOpen } from "lucide-react";
+import { User, Eye, Clock, Play, Music, BookOpen, ListVideo } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import PlaylistCard from "@/components/PlaylistCard";
+import type { Playlist } from "@/hooks/usePlaylist";
 
 interface Profile {
   user_id: string;
@@ -67,11 +69,13 @@ const formatDuration = (s: number | null) => {
 
 const CreatorProfile = () => {
   const { userId } = useParams<{ userId: string }>();
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [audio, setAudio] = useState<AudioTrack[]>([]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const [playlists, setPlaylists] = useState<(Playlist & { video_count: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,7 +86,7 @@ const CreatorProfile = () => {
       const profileSelect = canViewEligibility
         ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, created_at"
         : "user_id, display_name, avatar_url, bio, created_at";
-      const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }] =
+      const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }, { data: pls }] =
         await Promise.all([
           (supabase
             .from("profiles") as any)
@@ -107,11 +111,34 @@ const CreatorProfile = () => {
             .eq("user_id", userId)
             .eq("is_published", true)
             .order("created_at", { ascending: false }),
+          supabase
+            .from("playlists")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("is_public", true)
+            .order("created_at", { ascending: false }),
         ]);
+
+      const playlistIds = (pls ?? []).map((playlist: any) => playlist.id);
+      const counts = new Map<string, number>();
+      if (playlistIds.length > 0) {
+        const { data: playlistItems } = await supabase
+          .from("playlist_items")
+          .select("playlist_id")
+          .in("playlist_id", playlistIds);
+        (playlistItems ?? []).forEach((item: any) => {
+          counts.set(item.playlist_id, (counts.get(item.playlist_id) ?? 0) + 1);
+        });
+      }
+
       setProfile(prof as any);
       setVideos(vids ?? []);
       setAudio(tracks ?? []);
       setBlogs(posts ?? []);
+      setPlaylists((pls ?? []).map((playlist: any) => ({
+        ...playlist,
+        video_count: counts.get(playlist.id) ?? 0,
+      })));
       setLoading(false);
     };
     load();
@@ -216,6 +243,9 @@ const CreatorProfile = () => {
             </TabsTrigger>
             <TabsTrigger value="blogs" className="gap-1.5 rounded-lg">
               <BookOpen size={14} /> Blogs ({blogs.length})
+            </TabsTrigger>
+            <TabsTrigger value="playlists" className="gap-1.5 rounded-lg">
+              <ListVideo size={14} /> Playlists ({playlists.length})
             </TabsTrigger>
           </TabsList>
 
@@ -324,6 +354,22 @@ const CreatorProfile = () => {
                       </div>
                     </div>
                   </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="playlists">
+            {playlists.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-12">No public playlists yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {playlists.map((playlist) => (
+                  <PlaylistCard
+                    key={playlist.id}
+                    playlist={playlist}
+                    onPlay={(id) => navigate(`/playlist/${id}`)}
+                  />
                 ))}
               </div>
             )}
