@@ -181,7 +181,11 @@ const Playlist = () => {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <Button className="gap-2 bg-gradient-gold text-primary-foreground rounded-full">
+                <Button
+                  className="gap-2 bg-gradient-gold text-primary-foreground rounded-full"
+                  disabled={videos.length === 0}
+                  onClick={() => videos[0] && navigate(`/watch/${videos[0].id}?list=${playlist.id}`)}
+                >
                   <Play size={18} className="fill-current" />
                   Play All
                 </Button>
