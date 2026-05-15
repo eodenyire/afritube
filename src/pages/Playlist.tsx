@@ -24,6 +24,10 @@ interface VideoWithDetails {
   };
 }
 
+interface PlaylistOwnerProfile {
+  display_name: string | null;
+}
+
 const Playlist = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -32,6 +36,7 @@ const Playlist = () => {
   const { fetchPlaylist, removeVideoFromPlaylist, deletePlaylist, addVideoToPlaylist } = usePlaylist();
 
   const [playlist, setPlaylist] = useState<PlaylistWithVideos | null>(null);
+  const [playlistOwner, setPlaylistOwner] = useState<PlaylistOwnerProfile | null>(null);
   const [videos, setVideos] = useState<VideoWithDetails[]>([]);
   const [availableVideos, setAvailableVideos] = useState<VideoWithDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,6 +112,13 @@ const Playlist = () => {
 
       setPlaylist(playlistData);
       setIsOwner(user?.id === playlistData.user_id);
+
+      const { data: ownerProfile } = await (supabase
+        .from("profiles") as any)
+        .select("display_name")
+        .eq("user_id", playlistData.user_id)
+        .single();
+      setPlaylistOwner((ownerProfile as PlaylistOwnerProfile | null) ?? null);
 
       // Fetch videos in playlist
       if (playlistData.items.length > 0) {
@@ -274,6 +286,11 @@ const Playlist = () => {
               <h1 className="font-display text-4xl font-bold text-foreground mb-2">
                 {playlist.title}
               </h1>
+              {playlistOwner?.display_name && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  by {playlistOwner.display_name}
+                </p>
+              )}
               {playlist.description && (
                 <p className="text-muted-foreground mb-4">{playlist.description}</p>
               )}

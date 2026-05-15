@@ -22,7 +22,9 @@ const BrowsePlaylists = () => {
         .limit(60);
 
       const ids = (rows ?? []).map((playlist) => playlist.id);
+      const creatorIds = Array.from(new Set((rows ?? []).map((playlist) => playlist.user_id).filter(Boolean)));
       const counts = new Map<string, number>();
+      const creators = new Map<string, string | null>();
       if (ids.length > 0) {
         const { data: items } = await supabase
           .from("playlist_items")
@@ -33,9 +35,20 @@ const BrowsePlaylists = () => {
         });
       }
 
+      if (creatorIds.length > 0) {
+        const { data: creatorRows } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", creatorIds);
+        (creatorRows ?? []).forEach((creator: any) => {
+          creators.set(creator.user_id, creator.display_name ?? null);
+        });
+      }
+
       setPlaylists((rows ?? []).map((playlist: any) => ({
         ...playlist,
         video_count: counts.get(playlist.id) ?? 0,
+        creator_name: creators.get(playlist.user_id) ?? null,
       })));
       setLoading(false);
     };
