@@ -324,6 +324,7 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
+          subtitle_url: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -338,6 +339,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          subtitle_url?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -352,6 +354,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          subtitle_url?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string

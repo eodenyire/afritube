@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Video, Music, BookOpen, ImagePlus, X, Loader2 } from "lucide-react";
+import { Upload as UploadIcon, Video, Music, BookOpen, ImagePlus, FileText, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -130,6 +130,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [uploading, setUploading] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
@@ -319,13 +320,29 @@ function VideoUploadForm({ userId }: { userId: string }) {
         console.log("Thumbnail uploaded successfully:", thumbnailUrl);
       }
 
-      console.log("Saving video to database:", { title, thumbnailUrl });
+      let subtitleUrl: string | null = null;
+      if (subtitleFile) {
+        if (!subtitleFile.name.toLowerCase().endsWith(".srt")) {
+          throw new Error("Subtitle file must be an .srt file.");
+        }
+        const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
+        console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
+        const { error: sErr } = await supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
+          contentType: "application/x-subrip",
+        });
+        if (sErr) throw new Error(`Subtitle upload failed: ${sErr.message}`);
+        subtitleUrl = supabase.storage.from("subtitles").getPublicUrl(subtitlePath).data.publicUrl;
+        console.log("Subtitles uploaded successfully:", subtitleUrl);
+      }
+
+      console.log("Saving video to database:", { title, thumbnailUrl, subtitleUrl });
       const { data: createdVideo, error: dbErr } = await supabase.from("videos").insert({
         user_id: userId,
         title: title.trim(),
         description: description.trim() || null,
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
+        subtitle_url: subtitleUrl,
         category,
         duration,
       }).select("id").single();
@@ -364,6 +381,14 @@ function VideoUploadForm({ userId }: { userId: string }) {
     <div className="space-y-6 mt-6">
       <FileDropZone accept="video/*" label="Upload your video" icon={<Video size={32} />} file={videoFile} onFileSelect={setVideoFile} onClear={() => setVideoFile(null)} />
       <FileDropZone accept="image/*" label="Upload thumbnail (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
+      <FileDropZone
+        accept=".srt,text/plain,application/x-subrip"
+        label="Upload subtitles (.srt, optional)"
+        icon={<FileText size={32} />}
+        file={subtitleFile}
+        onFileSelect={setSubtitleFile}
+        onClear={() => setSubtitleFile(null)}
+      />
       <div className="space-y-4">
         <div>
           <Label htmlFor="v-title">Title</Label>
