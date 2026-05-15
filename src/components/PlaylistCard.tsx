@@ -10,7 +10,7 @@ import {
 import type { Playlist } from "@/hooks/usePlaylist";
 
 interface PlaylistCardProps {
-  playlist: Playlist & { video_count?: number };
+  playlist: Playlist & { video_count?: number; creator_name?: string | null };
   onEdit?: (playlist: Playlist) => void;
   onDelete?: (playlistId: string) => void;
   onPlay?: (playlistId: string) => void;
@@ -70,6 +70,11 @@ export default function PlaylistCard({
         <h3 className="font-semibold text-foreground truncate hover:text-primary transition-colors">
           {playlist.title}
         </h3>
+        {playlist.creator_name && (
+          <p className="text-xs text-muted-foreground mt-1 truncate">
+            by {playlist.creator_name}
+          </p>
+        )}
         <p className="text-sm text-muted-foreground mt-1">
           {playlist.video_count || 0} video{playlist.video_count !== 1 ? "s" : ""}
         </p>

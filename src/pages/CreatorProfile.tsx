@@ -138,6 +138,7 @@ const CreatorProfile = () => {
       setPlaylists((pls ?? []).map((playlist: any) => ({
         ...playlist,
         video_count: counts.get(playlist.id) ?? 0,
+        creator_name: (prof as any)?.display_name ?? null,
       })));
       setLoading(false);
     };
