@@ -7,7 +7,7 @@ import { usePlaylist, type PlaylistWithVideos } from "@/hooks/usePlaylist";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
-import VideoCard from "@/components/VideoCard";
+
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoWithDetails {
