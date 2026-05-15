@@ -325,27 +325,61 @@ function VideoUploadForm({ userId }: { userId: string }) {
         if (!subtitleFile.name.toLowerCase().endsWith(".srt")) {
           throw new Error("Subtitle file must be an .srt file.");
         }
-        const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
-        console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
-        const { error: sErr } = await supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
-          contentType: "application/x-subrip",
-        });
-        if (sErr) throw new Error(`Subtitle upload failed: ${sErr.message}`);
-        subtitleUrl = supabase.storage.from("subtitles").getPublicUrl(subtitlePath).data.publicUrl;
-        console.log("Subtitles uploaded successfully:", subtitleUrl);
+        try {
+          const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
+          console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
+          const { error: sErr } = await supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
+            contentType: "application/x-subrip",
+          });
+          if (sErr) throw new Error(sErr.message);
+          subtitleUrl = supabase.storage.from("subtitles").getPublicUrl(subtitlePath).data.publicUrl;
+          console.log("Subtitles uploaded successfully:", subtitleUrl);
+        } catch (subtitleError: any) {
+          subtitleUrl = null;
+          console.error("Subtitle upload error:", subtitleError);
+          toast({
+            title: "Subtitles skipped",
+            description: subtitleError?.message || "Subtitle upload failed, but your video will still be published.",
+            variant: "destructive",
+          });
+        }
       }
 
       console.log("Saving video to database:", { title, thumbnailUrl, subtitleUrl });
-      const { data: createdVideo, error: dbErr } = await supabase.from("videos").insert({
+      const videoPayload: {
+        user_id: string;
+        title: string;
+        description: string | null;
+        video_url: string;
+        thumbnail_url: string | null;
+        category: string;
+        duration: number;
+        subtitle_url?: string | null;
+      } = {
         user_id: userId,
         title: title.trim(),
         description: description.trim() || null,
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
-        subtitle_url: subtitleUrl,
         category,
         duration,
-      }).select("id").single();
+      };
+      if (subtitleUrl) {
+        videoPayload.subtitle_url = subtitleUrl;
+      }
+
+      let { data: createdVideo, error: dbErr } = await supabase.from("videos").insert(videoPayload).select("id").single();
+      if (dbErr?.message?.includes("subtitle_url")) {
+        const { subtitle_url, ...fallbackPayload } = videoPayload;
+        ({ data: createdVideo, error: dbErr } = await supabase.from("videos").insert(fallbackPayload).select("id").single());
+        if (!dbErr) {
+          toast({
+            title: "Video uploaded",
+            description: "Your video was published, but subtitle metadata could not be saved.",
+            variant: "destructive",
+          });
+        }
+      }
       if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
       console.log("Video saved to database successfully");
 
