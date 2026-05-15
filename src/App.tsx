@@ -48,6 +48,8 @@ const App = () => (
             <Route path="/advertise" element={<Advertise />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/playlists" element={<Playlists />} />
+            <Route path="/playlist/:id" element={<Playlist />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
