@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { backfillVideoThumbnail } from "@/lib/videoThumbnail";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -33,12 +33,23 @@ interface CreatorProfile {
   is_monetized?: boolean;
 }
 
+interface PlaylistContext {
+  id: string;
+  title: string;
+  videos: { id: string; title: string; thumbnail_url: string | null; duration: number | null }[];
+  currentIndex: number;
+}
+
 const Watch = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const listId = searchParams.get("list");
   const { user, isAdmin } = useAuth();
   const [video, setVideo] = useState<Video | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
+  const [playlistCtx, setPlaylistCtx] = useState<PlaylistContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
@@ -116,6 +127,42 @@ const Watch = () => {
 
     load();
   }, [id]);
+
+  // Load playlist context when ?list= is present
+  useEffect(() => {
+    if (!listId || !id) { setPlaylistCtx(null); return; }
+    (async () => {
+      const { data: pl } = await supabase.from("playlists").select("id, title").eq("id", listId).single();
+      if (!pl) return;
+      const { data: items } = await supabase
+        .from("playlist_items")
+        .select("video_id, position")
+        .eq("playlist_id", listId)
+        .order("position", { ascending: true });
+      const videoIds = (items ?? []).map((i: any) => i.video_id).filter(Boolean);
+      if (!videoIds.length) return;
+      const { data: vids } = await supabase
+        .from("videos")
+        .select("id, title, thumbnail_url, duration")
+        .in("id", videoIds);
+      const ordered = videoIds
+        .map((vid: string) => (vids ?? []).find((v: any) => v.id === vid))
+        .filter(Boolean) as any[];
+      const idx = ordered.findIndex((v) => v.id === id);
+      setPlaylistCtx({ id: pl.id, title: pl.title, videos: ordered, currentIndex: idx });
+    })();
+  }, [listId, id]);
+
+  // Auto-advance to next video in playlist
+  useEffect(() => {
+    if (!videoElement || !playlistCtx) return;
+    const handler = () => {
+      const next = playlistCtx.videos[playlistCtx.currentIndex + 1];
+      if (next) navigate(`/watch/${next.id}?list=${playlistCtx.id}`);
+    };
+    videoElement.addEventListener("ended", handler);
+    return () => videoElement.removeEventListener("ended", handler);
+  }, [videoElement, playlistCtx, navigate]);
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "0:00";
@@ -273,6 +320,40 @@ const Watch = () => {
 
           {/* Related Videos Sidebar */}
           <div className="space-y-3">
+            {playlistCtx && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden mb-4">
+                <div className="px-4 py-3 border-b border-border">
+                  <p className="text-xs text-muted-foreground">Playing from playlist</p>
+                  <Link to={`/playlist/${playlistCtx.id}`} className="font-display font-semibold text-foreground text-sm hover:text-primary line-clamp-1">
+                    {playlistCtx.title}
+                  </Link>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {playlistCtx.currentIndex + 1} / {playlistCtx.videos.length}
+                  </p>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {playlistCtx.videos.map((pv, i) => {
+                    const active = pv.id === video.id;
+                    return (
+                      <Link key={pv.id} to={`/watch/${pv.id}?list=${playlistCtx.id}`}
+                        className={`flex gap-2 items-start px-3 py-2 hover:bg-secondary transition-colors ${active ? "bg-secondary" : ""}`}>
+                        <span className={`text-xs w-5 text-center pt-1 ${active ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                          {active ? "▶" : i + 1}
+                        </span>
+                        <div className="w-20 aspect-video rounded bg-secondary overflow-hidden shrink-0">
+                          {pv.thumbnail_url ? (
+                            <img src={pv.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                          ) : null}
+                        </div>
+                        <span className={`text-xs line-clamp-2 flex-1 ${active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                          {pv.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <h2 className="font-display font-semibold text-foreground text-base mb-3">
               Related Videos
             </h2>
