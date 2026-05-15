@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles } from "lucide-react";
+import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, ListVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,8 @@ import CreatorBadge from "@/components/CreatorBadge";
 import SectionHeader from "@/components/SectionHeader";
 import CategoryPills from "@/components/CategoryPills";
 import Footer from "@/components/Footer";
+import PlaylistCard from "@/components/PlaylistCard";
+import { useMix } from "@/hooks/useMix";
 
 import heroBg from "@/assets/hero-bg.jpg";
 import thumb1 from "@/assets/thumb-1.jpg";
@@ -85,33 +87,38 @@ const fadeUp = {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dbVideos, setDbVideos] = useState<any[]>([]);
   const [dbAudios, setDbAudios] = useState<any[]>([]);
   const [dbBlogs, setDbBlogs] = useState<any[]>([]);
   const [dbCreators, setDbCreators] = useState<any[]>([]);
+  const [dbPlaylists, setDbPlaylists] = useState<any[]>([]);
   const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const { mixVideos, loading: mixLoading } = useMix(user?.id, 20);
   const getMonetizedStatus = (value?: boolean) => isAdmin && !!value;
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [videosRes, audiosRes, blogsRes] = await Promise.all([
+      const [videosRes, audiosRes, blogsRes, playlistsRes] = await Promise.all([
         supabase.from("videos").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(20),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
+        supabase.from("playlists").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(6),
       ]);
 
       const videos = videosRes.data ?? [];
       const audios = audiosRes.data ?? [];
       const blogs = blogsRes.data ?? [];
+      const playlists = playlistsRes.data ?? [];
 
       // Collect all unique user_ids from content
       const userIds = new Set<string>();
       videos.forEach((v) => userIds.add(v.user_id));
       audios.forEach((a) => userIds.add(a.user_id));
       blogs.forEach((b) => userIds.add(b.user_id));
+      playlists.forEach((p) => userIds.add(p.user_id));
 
       if (userIds.size > 0) {
         const profileSelect = isAdmin
@@ -131,6 +138,20 @@ const Index = () => {
       setDbVideos(videos);
       setDbAudios(audios);
       setDbBlogs(blogs);
+      if (playlists.length > 0) {
+        const playlistIds = playlists.map((playlist) => playlist.id);
+        const { data: playlistItems } = await supabase
+          .from("playlist_items")
+          .select("playlist_id")
+          .in("playlist_id", playlistIds);
+        const counts = new Map<string, number>();
+        (playlistItems ?? []).forEach((item: any) => {
+          counts.set(item.playlist_id, (counts.get(item.playlist_id) ?? 0) + 1);
+        });
+        setDbPlaylists(playlists.map((playlist) => ({ ...playlist, video_count: counts.get(playlist.id) ?? 0 })));
+      } else {
+        setDbPlaylists([]);
+      }
       setLoading(false);
     };
 
@@ -199,6 +220,9 @@ const Index = () => {
     : sampleCreators;
 
   const hasMoreCreators = dbCreators.length > 4;
+  const mixPreview = mixVideos.slice(0, 4);
+  const mixVideoIds = mixVideos.map((video) => video.id).join(",");
+  const mixStartHref = mixVideos[0] ? `/watch/${mixVideos[0].id}?list=mix&videos=${encodeURIComponent(mixVideoIds)}` : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,6 +270,47 @@ const Index = () => {
         <motion.section {...fadeUp} id="videos">
           <SectionHeader icon={<Play size={22} />} title="Trending Videos" subtitle="The hottest content from across Africa" onSeeAll={() => navigate(`/search?type=videos${activeVideoCategory !== "Trending" ? `&q=${activeVideoCategory}` : ""}`)} />
           <CategoryPills categories={videoCategories} onSelect={setActiveVideoCategory} />
+          {user && (
+            <div className="mt-6 rounded-2xl border border-border bg-card p-4 md:p-5">
+              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-primary font-semibold">Made for you</p>
+                  <h3 className="font-display text-xl font-bold text-foreground mt-1">Your Mix</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Auto-generated from what you watch most.
+                  </p>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      disabled={!mixStartHref || mixLoading}
+                      onClick={() => mixStartHref && navigate(mixStartHref)}
+                      className="rounded-full bg-gradient-gold text-primary-foreground"
+                    >
+                      <Play size={16} className="mr-1.5 fill-current" />
+                      Play Mix
+                    </Button>
+                    <Button variant="outline" className="rounded-full" onClick={() => navigate("/mix")}>
+                      Open Mix
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 w-full md:w-56 shrink-0">
+                  {mixPreview.length === 0 ? (
+                    <div className="col-span-2 rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                      Keep watching videos to build your mix.
+                    </div>
+                  ) : (
+                    mixPreview.map((video) => (
+                      <div key={video.id} className="aspect-video rounded-lg overflow-hidden bg-secondary">
+                        {video.thumbnail_url ? (
+                          <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover" />
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
               {[1,2,3,4].map(i => (
@@ -264,6 +329,36 @@ const Index = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
               {videoCards.map((v) => (
                 <VideoCard key={v.title} {...v} />
+              ))}
+            </div>
+          )}
+        </motion.section>
+
+        {/* Public playlists */}
+        <motion.section {...fadeUp} id="playlists">
+          <SectionHeader
+            icon={<ListVideo size={22} />}
+            title="Public Playlists"
+            subtitle="Series, courses, and collections from creators"
+            onSeeAll={() => navigate("/browse-playlists")}
+          />
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-square rounded-xl" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : dbPlaylists.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No public playlists yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {dbPlaylists.map((playlist) => (
+                <PlaylistCard key={playlist.id} playlist={playlist} onPlay={(id) => navigate(`/playlist/${id}`)} />
               ))}
             </div>
           )}
