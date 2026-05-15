@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Video, Music, BookOpen, Eye, Users, Clock, TrendingUp,
-  DollarSign, Edit2, Upload, BarChart3, Loader2, Trash2
+  DollarSign, Edit2, Upload, BarChart3, Loader2, Trash2, ListVideo
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
