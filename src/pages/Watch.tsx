@@ -19,6 +19,7 @@ interface Video {
   description: string | null;
   video_url: string;
   thumbnail_url: string | null;
+  subtitle_url: string | null;
   views: number;
   duration: number | null;
   category: string | null;
@@ -55,6 +56,7 @@ const Watch = () => {
   const [showRelated, setShowRelated] = useState(true);
   const [loading, setLoading] = useState(true);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [subtitleTrackUrl, setSubtitleTrackUrl] = useState<string | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
   const buildWatchHref = useCallback((videoId: string, context?: PlaylistContext | null) => {
     if (!context) return `/watch/${videoId}`;
@@ -198,6 +200,38 @@ const Watch = () => {
     setShowRelated(!playlistCtx);
   }, [playlistCtx]);
 
+  useEffect(() => {
+    let objectUrl: string | null = null;
+
+    const loadSubtitles = async () => {
+      if (!video?.subtitle_url) {
+        setSubtitleTrackUrl(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(video.subtitle_url);
+        if (!response.ok) throw new Error(`Failed to fetch subtitles: ${response.status}`);
+        const srtText = await response.text();
+        const vttText = `WEBVTT\n\n${srtText
+          .replace(/\r/g, "")
+          .replace(/--&gt;/g, "-->")
+          .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")}`;
+        objectUrl = URL.createObjectURL(new Blob([vttText], { type: "text/vtt" }));
+        setSubtitleTrackUrl(objectUrl);
+      } catch (error) {
+        console.warn("Subtitle processing failed:", error);
+        setSubtitleTrackUrl(video.subtitle_url);
+      }
+    };
+
+    loadSubtitles();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [video?.subtitle_url]);
+
   // Auto-advance to next video in playlist
   useEffect(() => {
     if (!videoElement || !playlistCtx) return;
@@ -289,7 +323,11 @@ const Watch = () => {
                 autoPlay
                 className="w-full h-full object-contain"
                 poster={video.thumbnail_url ?? undefined}
-              />
+              >
+                {subtitleTrackUrl && (
+                  <track kind="subtitles" src={subtitleTrackUrl} srcLang="en" label="Subtitles" default />
+                )}
+              </video>
             </div>
 
             {/* Video Info */}
