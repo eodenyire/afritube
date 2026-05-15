@@ -175,11 +175,48 @@ const Dashboard = () => {
                   <Progress value={watchHoursProgress} className="h-2.5" />
                 </div>
               </div>
-              {!isEligible && (
-                <p className="text-xs text-muted-foreground mt-4">
-                  Reach 100 subscribers and 1,000 watch hours to start earning from ads on your content.
-                </p>
-              )}
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                {!isEligible ? (
+                  <p className="text-xs text-muted-foreground">
+                    Reach 100 subscribers and 1,000 watch hours to start earning from ads on your content.
+                  </p>
+                ) : profile?.is_monetized ? (
+                  <>
+                    <p className="text-xs text-muted-foreground flex-1">
+                      Ads are running on your content. You can pause monetization at any time.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={async () => {
+                        const { error } = await supabase.rpc("disable_creator_ads");
+                        if (error) toast({ title: "Could not pause ads", description: error.message, variant: "destructive" });
+                        else { toast({ title: "Ads paused" }); refreshProfile(); }
+                      }}
+                    >
+                      Pause ads
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground flex-1">
+                      You're eligible! Turn on ads to start earning from your content.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90"
+                      onClick={async () => {
+                        const { error } = await supabase.rpc("enable_creator_ads");
+                        if (error) toast({ title: "Could not enable ads", description: error.message, variant: "destructive" });
+                        else { toast({ title: "Ads enabled — start earning!" }); refreshProfile(); }
+                      }}
+                    >
+                      <DollarSign size={14} className="mr-1" /> Enable ads
+                    </Button>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
 
