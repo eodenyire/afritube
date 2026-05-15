@@ -131,8 +131,11 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">{user.email}</p>
               {profile?.bio && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{profile.bio}</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <EditProfileDialog onUpdated={refreshProfile} />
+              <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/playlists")}>
+                <ListVideo size={14} /> Playlists
+              </Button>
               <Button variant="outline" size="sm" className="rounded-full gap-1.5" onClick={() => navigate("/upload")}>
                 <Upload size={14} /> Upload
               </Button>
