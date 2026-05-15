@@ -28,6 +28,11 @@ interface PlaylistOwnerProfile {
   display_name: string | null;
 }
 
+interface VideoProfileRow {
+  user_id: string;
+  display_name: string | null;
+}
+
 const Playlist = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -98,6 +103,32 @@ const Playlist = () => {
 
     const load = async () => {
       setLoading(true);
+      setVideos([]);
+      setAvailableVideos([]);
+      setPlaylistOwner(null);
+
+      const attachVideoProfiles = async (videoRows: any[]): Promise<VideoWithDetails[]> => {
+        if (videoRows.length === 0) return [];
+
+        const creatorIds = Array.from(new Set(videoRows.map((video) => video.user_id).filter(Boolean)));
+        if (creatorIds.length === 0) return videoRows as VideoWithDetails[];
+
+        const { data: profileRows } = await (supabase
+          .from("profiles") as any)
+          .select("user_id, display_name")
+          .in("user_id", creatorIds);
+
+        const profileMap = new Map(
+          ((profileRows ?? []) as VideoProfileRow[]).map((profile) => [profile.user_id, profile.display_name])
+        );
+
+        return videoRows.map((video) => ({
+          ...video,
+          profiles: {
+            display_name: profileMap.get(video.user_id) ?? null,
+          },
+        })) as VideoWithDetails[];
+      };
 
       // Fetch playlist
       const playlistData = await fetchPlaylist(id);
@@ -111,7 +142,8 @@ const Playlist = () => {
       }
 
       setPlaylist(playlistData);
-      setIsOwner(user?.id === playlistData.user_id);
+      const ownsPlaylist = user?.id === playlistData.user_id;
+      setIsOwner(ownsPlaylist);
 
       const { data: ownerProfile } = await (supabase
         .from("profiles") as any)
@@ -122,29 +154,39 @@ const Playlist = () => {
 
       // Fetch videos in playlist
       if (playlistData.items.length > 0) {
-        const videoIds = playlistData.items.map((item) => item.video_id);
-        const { data: videosData } = await (supabase
-          .from("videos") as any)
-          .select("*, profiles(display_name)")
-          .in("id", videoIds);
+        const videoIds = playlistData.items
+          .map((item) => item.video_id)
+          .filter((videoId): videoId is string => Boolean(videoId));
+        if (videoIds.length > 0) {
+          const playlistVideosQuery = (supabase
+            .from("videos") as any)
+            .select("id, title, thumbnail_url, views, duration, category, user_id")
+            .in("id", videoIds);
+          if (!ownsPlaylist) {
+            playlistVideosQuery.eq("is_published", true);
+          }
+          const { data: videosData } = await playlistVideosQuery;
 
-        if (videosData) {
-          // Sort by playlist order
-          const orderedVideos = (playlistData.items
-            .map((item) => (videosData as any[]).find((v: any) => v.id === item.video_id))
-            .filter(Boolean)) as unknown as VideoWithDetails[];
-          setVideos(orderedVideos);
+          if (videosData) {
+            const playlistVideos = await attachVideoProfiles(videosData as any[]);
+            // Sort by playlist order
+            const orderedVideos = (playlistData.items
+              .map((item) => playlistVideos.find((video) => video.id === item.video_id))
+              .filter(Boolean)) as unknown as VideoWithDetails[];
+            setVideos(orderedVideos);
+          }
         }
       }
 
-      if (user?.id === playlistData.user_id) {
+      if (ownsPlaylist && user?.id) {
         const { data: ownVideos } = await (supabase
           .from("videos") as any)
-          .select("*, profiles(display_name)")
+          .select("id, title, thumbnail_url, views, duration, category, user_id")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
         const existingIds = new Set(playlistData.items.map((item) => item.video_id));
-        const selectableVideos = ((ownVideos ?? []) as any[]).filter((video: any) => !existingIds.has(video.id)) as VideoWithDetails[];
+        const selectableVideos = (await attachVideoProfiles((ownVideos ?? []) as any[]))
+          .filter((video) => !existingIds.has(video.id));
         setAvailableVideos(selectableVideos);
       }
 
