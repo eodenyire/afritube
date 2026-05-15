@@ -20,6 +20,8 @@ import Creators from "./pages/Creators.tsx";
 import Advertise from "./pages/Advertise.tsx";
 import Terms from "./pages/Terms.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import Playlist from "./pages/Playlist.tsx";
+import Playlists from "./pages/Playlists.tsx";
 
 const queryClient = new QueryClient();
 
