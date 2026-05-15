@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Upload as UploadIcon, Video, Music, BookOpen, ImagePlus, X, Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import { usePlaylist, type Playlist } from "@/hooks/usePlaylist";
 
 const videoCategories = ["General", "Music", "Comedy", "Tech", "Food", "Travel", "Education", "Sports", "Fashion", "Documentary"];
 const audioGenres = ["General", "Afrobeats", "Amapiano", "Highlife", "Afro-pop", "Gospel", "Hip-Hop", "R&B", "Reggae", "Traditional"];
@@ -125,15 +126,35 @@ function FileDropZone({ accept, label, icon, file, onFileSelect, onClear }: {
 function VideoUploadForm({ userId }: { userId: string }) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { createPlaylist, addVideoToPlaylist } = usePlaylist();
   const [uploading, setUploading] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistTarget, setPlaylistTarget] = useState<string>("none");
+  const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
+  const [playlistLoading, setPlaylistLoading] = useState(false);
   const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
   const THUMBNAIL_JPEG_QUALITY = 0.85;
   const THUMBNAIL_TIMEOUT_MS = 8000;
+
+  useEffect(() => {
+    const fetchPlaylists = async () => {
+      setPlaylistLoading(true);
+      const { data } = await supabase
+        .from("playlists")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      setPlaylists((data ?? []) as Playlist[]);
+      setPlaylistLoading(false);
+    };
+
+    fetchPlaylists();
+  }, [userId]);
 
   const createVideoThumbnail = (file: File): Promise<File | null> =>
     new Promise((resolve) => {
@@ -259,6 +280,14 @@ function VideoUploadForm({ userId }: { userId: string }) {
       toast({ title: "Missing fields", description: "Title and video file are required.", variant: "destructive" });
       return;
     }
+    if (playlistTarget === "create_new" && !newPlaylistTitle.trim()) {
+      toast({
+        title: "Playlist name required",
+        description: "Enter a name for your new playlist.",
+        variant: "destructive",
+      });
+      return;
+    }
     setUploading(true);
     try {
       console.log("Starting video upload:", { fileName: videoFile.name, size: videoFile.size });
@@ -291,7 +320,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
       }
 
       console.log("Saving video to database:", { title, thumbnailUrl });
-      const { error: dbErr } = await supabase.from("videos").insert({
+      const { data: createdVideo, error: dbErr } = await supabase.from("videos").insert({
         user_id: userId,
         title: title.trim(),
         description: description.trim() || null,
@@ -299,9 +328,27 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnail_url: thumbnailUrl,
         category,
         duration,
-      });
+      }).select("id").single();
       if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
       console.log("Video saved to database successfully");
+
+      let targetPlaylistId: string | null = null;
+      if (playlistTarget === "create_new") {
+        targetPlaylistId = await createPlaylist(newPlaylistTitle.trim(), undefined, undefined, "custom");
+      } else if (playlistTarget !== "none") {
+        targetPlaylistId = playlistTarget;
+      }
+
+      if (targetPlaylistId && createdVideo?.id) {
+        const added = await addVideoToPlaylist(targetPlaylistId, createdVideo.id);
+        if (!added) {
+          toast({
+            title: "Video uploaded",
+            description: "Your video was published, but could not be added to the playlist.",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({ title: "Video uploaded! 🎬", description: "Your video is now live on AfriTube." });
       navigate("/");
@@ -333,6 +380,35 @@ function VideoUploadForm({ userId }: { userId: string }) {
             <SelectContent>{videoCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+        <div>
+          <Label>Add to playlist (optional)</Label>
+          <Select value={playlistTarget} onValueChange={setPlaylistTarget}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder={playlistLoading ? "Loading playlists..." : "Choose a playlist"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Do not add</SelectItem>
+              {playlists.map((playlist) => (
+                <SelectItem key={playlist.id} value={playlist.id}>
+                  {playlist.title}
+                </SelectItem>
+              ))}
+              <SelectItem value="create_new">Create new playlist</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {playlistTarget === "create_new" && (
+          <div>
+            <Label htmlFor="new-playlist-title">New playlist name</Label>
+            <Input
+              id="new-playlist-title"
+              placeholder="e.g. Summer Vlog Series"
+              value={newPlaylistTitle}
+              onChange={(e) => setNewPlaylistTitle(e.target.value)}
+              className="mt-1.5"
+            />
+          </div>
+        )}
       </div>
       <Button onClick={handleSubmit} disabled={uploading} className="w-full bg-gradient-gold text-primary-foreground font-semibold rounded-full hover:opacity-90">
         {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Uploading...</> : <><UploadIcon size={18} className="mr-2" /> Publish Video</>}

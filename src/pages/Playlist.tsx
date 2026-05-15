@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Play, Share2, Heart, Trash2, Plus, Loader2 } from "lucide-react";
+import { Play, Share2, Heart, Trash2, Plus, Loader2, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { usePlaylist, type PlaylistWithVideos } from "@/hooks/usePlaylist";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,12 +29,64 @@ const Playlist = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { fetchPlaylist, removeVideoFromPlaylist, deletePlaylist } = usePlaylist();
+  const { fetchPlaylist, removeVideoFromPlaylist, deletePlaylist, addVideoToPlaylist } = usePlaylist();
 
   const [playlist, setPlaylist] = useState<PlaylistWithVideos | null>(null);
   const [videos, setVideos] = useState<VideoWithDetails[]>([]);
+  const [availableVideos, setAvailableVideos] = useState<VideoWithDetails[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
+
+  const updatePlaylistItemsFromVideos = (nextVideos: VideoWithDetails[]) => {
+    setPlaylist((prev) => {
+      if (!prev || !id) return prev;
+      const existingItemMap = new Map(prev.items.map((item) => [item.video_id, item]));
+      return {
+        ...prev,
+        items: nextVideos.map((video, index) => {
+          const existing = existingItemMap.get(video.id);
+          return {
+            id: existing?.id ?? `tmp-${video.id}`,
+            playlist_id: id,
+            video_id: video.id,
+            position: index,
+            added_at: existing?.added_at ?? new Date().toISOString(),
+          };
+        }),
+        video_count: nextVideos.length,
+      };
+    });
+  };
+
+  const persistVideoOrder = async (orderedVideos: VideoWithDetails[]) => {
+    if (!id) return false;
+    setSavingOrder(true);
+    const updates = await Promise.all(
+      orderedVideos.map((video, index) =>
+        supabase
+          .from("playlist_items")
+          .update({ position: index })
+          .eq("playlist_id", id)
+          .eq("video_id", video.id)
+      )
+    );
+    setSavingOrder(false);
+
+    const failed = updates.find((result) => result.error);
+    if (failed) {
+      toast({
+        title: "Failed to save order",
+        description: failed.error?.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+    updatePlaylistItemsFromVideos(orderedVideos);
+    return true;
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -72,6 +125,17 @@ const Playlist = () => {
         }
       }
 
+      if (user?.id === playlistData.user_id) {
+        const { data: ownVideos } = await (supabase
+          .from("videos") as any)
+          .select("*, profiles(display_name)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        const existingIds = new Set(playlistData.items.map((item) => item.video_id));
+        const selectableVideos = ((ownVideos ?? []) as any[]).filter((video: any) => !existingIds.has(video.id)) as VideoWithDetails[];
+        setAvailableVideos(selectableVideos);
+      }
+
       setLoading(false);
     };
 
@@ -82,16 +146,50 @@ const Playlist = () => {
     if (!id) return;
     const success = await removeVideoFromPlaylist(id, videoId);
     if (success) {
-      setVideos((prev) => prev.filter((v) => v.id !== videoId));
+      const removedVideo = videos.find((video) => video.id === videoId);
+      const nextVideos = videos.filter((video) => video.id !== videoId);
+      setVideos(nextVideos);
+      if (removedVideo) setAvailableVideos((prev) => [removedVideo, ...prev]);
       setPlaylist((prev) =>
         prev
           ? {
               ...prev,
-              items: prev.items.filter((item) => item.video_id !== videoId),
-              video_count: prev.video_count - 1,
+              items: prev.items
+                .filter((item) => item.video_id !== videoId)
+                .map((item, index) => ({ ...item, position: index })),
+              video_count: Math.max(0, prev.video_count - 1),
             }
           : null
       );
+    }
+  };
+
+  const handleAddVideo = async (video: VideoWithDetails) => {
+    if (!id) return;
+    setAddingVideoId(video.id);
+    const success = await addVideoToPlaylist(id, video.id);
+    setAddingVideoId(null);
+    if (!success) return;
+
+    const nextVideos = [...videos, video];
+    setVideos(nextVideos);
+    updatePlaylistItemsFromVideos(nextVideos);
+    setAvailableVideos((prev) => prev.filter((item) => item.id !== video.id));
+  };
+
+  const handleMoveVideo = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= videos.length) return;
+
+    const previous = [...videos];
+    const reordered = [...videos];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    setVideos(reordered);
+    updatePlaylistItemsFromVideos(reordered);
+    const saved = await persistVideoOrder(reordered);
+    if (!saved) {
+      setVideos(previous);
+      updatePlaylistItemsFromVideos(previous);
     }
   };
 
@@ -134,6 +232,10 @@ const Playlist = () => {
     custom: "Playlist",
     watch_later: "Watch Later",
   }[playlist.playlist_type];
+
+  const filteredAvailableVideos = availableVideos.filter((video) =>
+    video.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,6 +314,53 @@ const Playlist = () => {
 
         {/* Videos */}
         <div className="max-w-6xl mx-auto px-4">
+          {isOwner && (
+            <div className="mb-6 rounded-xl border border-border p-4 bg-card/60">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Add your uploads</h3>
+              <div className="relative mb-3">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search your uploaded videos..."
+                  className="pl-8"
+                />
+              </div>
+              <div className="space-y-2 max-h-56 overflow-y-auto">
+                {filteredAvailableVideos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {availableVideos.length === 0
+                      ? "All your uploaded videos are already in this playlist."
+                      : "No videos match your search."}
+                  </p>
+                ) : (
+                  filteredAvailableVideos.map((video) => (
+                    <div key={video.id} className="flex items-center gap-3 border border-border rounded-lg px-3 py-2">
+                      <div className="w-20 aspect-video rounded bg-secondary overflow-hidden shrink-0">
+                        {video.thumbnail_url && (
+                          <img src={video.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-foreground truncate">{video.title}</p>
+                        <p className="text-xs text-muted-foreground">{Number(video.views ?? 0).toLocaleString()} views</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddVideo(video)}
+                        disabled={addingVideoId === video.id}
+                        className="gap-1"
+                      >
+                        {addingVideoId === video.id ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                        Add
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {videos.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
@@ -256,13 +405,31 @@ const Playlist = () => {
                     </div>
                   </button>
                   {isOwner && (
-                    <button
-                      onClick={() => handleRemoveVideo(video.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80 shrink-0 px-2"
-                      aria-label="Remove from playlist"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleMoveVideo(index, "up")}
+                        disabled={index === 0 || savingOrder}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-40 px-1.5"
+                        aria-label="Move up"
+                      >
+                        <ArrowUp size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveVideo(index, "down")}
+                        disabled={index === videos.length - 1 || savingOrder}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-40 px-1.5"
+                        aria-label="Move down"
+                      >
+                        <ArrowDown size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveVideo(video.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80 px-1.5"
+                        aria-label="Remove from playlist"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   )}
                 </motion.div>
               ))}
