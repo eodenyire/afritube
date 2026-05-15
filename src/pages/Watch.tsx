@@ -320,6 +320,40 @@ const Watch = () => {
 
           {/* Related Videos Sidebar */}
           <div className="space-y-3">
+            {playlistCtx && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden mb-4">
+                <div className="px-4 py-3 border-b border-border">
+                  <p className="text-xs text-muted-foreground">Playing from playlist</p>
+                  <Link to={`/playlist/${playlistCtx.id}`} className="font-display font-semibold text-foreground text-sm hover:text-primary line-clamp-1">
+                    {playlistCtx.title}
+                  </Link>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {playlistCtx.currentIndex + 1} / {playlistCtx.videos.length}
+                  </p>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {playlistCtx.videos.map((pv, i) => {
+                    const active = pv.id === video.id;
+                    return (
+                      <Link key={pv.id} to={`/watch/${pv.id}?list=${playlistCtx.id}`}
+                        className={`flex gap-2 items-start px-3 py-2 hover:bg-secondary transition-colors ${active ? "bg-secondary" : ""}`}>
+                        <span className={`text-xs w-5 text-center pt-1 ${active ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                          {active ? "▶" : i + 1}
+                        </span>
+                        <div className="w-20 aspect-video rounded bg-secondary overflow-hidden shrink-0">
+                          {pv.thumbnail_url ? (
+                            <img src={pv.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                          ) : null}
+                        </div>
+                        <span className={`text-xs line-clamp-2 flex-1 ${active ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                          {pv.title}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <h2 className="font-display font-semibold text-foreground text-base mb-3">
               Related Videos
             </h2>
