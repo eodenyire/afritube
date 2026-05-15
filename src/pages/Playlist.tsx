@@ -225,33 +225,41 @@ const Playlist = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {videos.map((video, index) => (
                 <motion.div
                   key={video.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex gap-4 items-start group"
+                  transition={{ delay: index * 0.03 }}
+                  className="flex gap-3 items-center group p-2 rounded-lg hover:bg-card transition-colors"
                 >
-                  <div className="flex-shrink-0 text-muted-foreground font-semibold w-8 text-right">
+                  <div className="text-muted-foreground font-semibold w-8 text-right shrink-0">
                     {index + 1}
                   </div>
-                  <div className="flex-1">
-                    <VideoCard
-                      id={video.id}
-                      title={video.title}
-                      channel={video.profiles?.display_name ?? "Unknown"}
-                      views={String(video.views ?? 0)}
-                      duration={String(video.duration ?? 0)}
-                      thumbnail={video.thumbnail_url ?? ""}
-                      avatar=""
-                    />
-                  </div>
+                  <button
+                    onClick={() => navigate(`/watch/${video.id}?list=${playlist.id}`)}
+                    className="flex-1 flex gap-3 items-center text-left min-w-0"
+                  >
+                    <div className="w-32 aspect-video rounded-md bg-secondary overflow-hidden shrink-0">
+                      {video.thumbnail_url && (
+                        <img src={video.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                        {video.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {video.profiles?.display_name ?? "Unknown"} · {Number(video.views ?? 0).toLocaleString()} views
+                      </p>
+                    </div>
+                  </button>
                   {isOwner && (
                     <button
                       onClick={() => handleRemoveVideo(video.id)}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80 shrink-0 px-2"
+                      aria-label="Remove from playlist"
                     >
                       <Trash2 size={18} />
                     </button>
