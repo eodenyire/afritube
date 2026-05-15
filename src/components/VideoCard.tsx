@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import VideoContextMenu from "./VideoContextMenu";
+import SaveToPlaylistModal from "./SaveToPlaylistModal";
 
 interface VideoCardProps {
   id?: string;
@@ -17,6 +18,7 @@ interface VideoCardProps {
 
 const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isMonetized }: VideoCardProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
   const Wrapper = id ? Link : "div";
   const wrapperProps = id ? { to: `/watch/${id}` } : {};
@@ -87,9 +89,15 @@ const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isM
           videoId={id}
           title={title}
           thumbnailUrl={thumbnail ?? ""}
+          onSaveToPlaylist={() => setSaveModalOpen(true)}
           onClose={() => setMenuOpen(false)}
         />
       )}
+      <SaveToPlaylistModal
+        open={saveModalOpen}
+        onOpenChange={setSaveModalOpen}
+        videoId={id}
+      />
     </div>
   );
 };
