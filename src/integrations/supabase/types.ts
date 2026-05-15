@@ -419,6 +419,8 @@ export type Database = {
         }
         Returns: string
       }
+      disable_creator_ads: { Args: never; Returns: boolean }
+      enable_creator_ads: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
