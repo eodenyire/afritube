@@ -33,12 +33,23 @@ interface CreatorProfile {
   is_monetized?: boolean;
 }
 
+interface PlaylistContext {
+  id: string;
+  title: string;
+  videos: { id: string; title: string; thumbnail_url: string | null; duration: number | null }[];
+  currentIndex: number;
+}
+
 const Watch = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const listId = searchParams.get("list");
   const { user, isAdmin } = useAuth();
   const [video, setVideo] = useState<Video | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [related, setRelated] = useState<Video[]>([]);
+  const [playlistCtx, setPlaylistCtx] = useState<PlaylistContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
