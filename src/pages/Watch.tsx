@@ -4,7 +4,7 @@ import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
-import { Eye, Clock, Share2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, Clock, Share2, User, ChevronDown, ChevronUp, BadgeCheck } from "lucide-react";
 import VideoReactions from "@/components/VideoReactions";
 import SubscribeButton from "@/components/SubscribeButton";
 import VideoComments from "@/components/VideoComments";
@@ -32,6 +32,7 @@ interface CreatorProfile {
   avatar_url: string | null;
   subscriber_count?: number;
   is_monetized?: boolean;
+  is_creator?: boolean;
 }
 
 interface PlaylistContext {
@@ -57,6 +58,7 @@ const Watch = () => {
   const [loading, setLoading] = useState(true);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [subtitleTrackUrl, setSubtitleTrackUrl] = useState<string | null>(null);
+  const adLoggedForVideoRef = useRef<string | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
   const buildWatchHref = useCallback((videoId: string, context?: PlaylistContext | null) => {
     if (!context) return `/watch/${videoId}`;
@@ -89,6 +91,7 @@ const Watch = () => {
 
     const load = async () => {
       setLoading(true);
+      const nowIso = new Date().toISOString();
 
       // Fetch video
       const { data: vid } = await supabase
@@ -113,8 +116,8 @@ const Watch = () => {
       // Fetch creator profile
       const canViewEligibility = isAdmin || user?.id === vid.user_id;
       const profileSelect = canViewEligibility
-        ? "display_name, avatar_url, subscriber_count, is_monetized"
-        : "display_name, avatar_url";
+        ? "display_name, avatar_url, subscriber_count, is_monetized, is_creator"
+        : "display_name, avatar_url, is_monetized, is_creator";
       const { data: profile } = await (supabase
         .from("profiles") as any)
         .select(profileSelect)
@@ -127,7 +130,8 @@ const Watch = () => {
         .from("videos")
         .select("*")
         .neq("id", id)
-        .eq("is_published", true)
+        .eq("visibility", "public")
+        .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
         .order("views", { ascending: false })
         .limit(8);
       setRelated(rel ?? []);
@@ -136,7 +140,26 @@ const Watch = () => {
     };
 
     load();
-  }, [id]);
+  }, [id, isAdmin, user?.id]);
+
+  useEffect(() => {
+    if (!video || !creator?.is_monetized) return;
+    if (user?.id === video.user_id) return;
+    if (adLoggedForVideoRef.current === video.id) return;
+    adLoggedForVideoRef.current = video.id;
+
+    supabase.rpc("log_ad_impression", {
+      p_video_id: video.id,
+      p_creator_id: video.user_id,
+      p_viewer_id: user?.id ?? null,
+      p_ad_slot: "watch_preroll",
+      p_revenue_usd: 0.004,
+    }).then(({ error }) => {
+      if (error) {
+        console.warn("Failed to log ad impression:", error.message);
+      }
+    });
+  }, [video, creator?.is_monetized, user?.id]);
 
   // Load playlist context when ?list= is present
   useEffect(() => {
@@ -302,6 +325,7 @@ const Watch = () => {
   }
 
   const canViewCreatorStats = isAdmin || user?.id === video.user_id;
+  const showAdNotice = !!creator?.is_monetized && user?.id !== video.user_id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -355,6 +379,15 @@ const Watch = () => {
               </div>
             </div>
 
+            {showAdNotice && (
+              <div className="mt-4 p-3 rounded-xl border border-primary/30 bg-primary/10">
+                <p className="text-xs font-semibold text-primary">Sponsored</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ads are running on this video to support the creator.
+                </p>
+              </div>
+            )}
+
             {/* Creator Info */}
             <div className="flex items-center gap-3 mt-5 p-4 rounded-xl bg-card border border-border">
               {creator?.avatar_url ? (
@@ -373,6 +406,11 @@ const Watch = () => {
                   <Link to={`/creator/${video.user_id}`} className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors">
                     {creator?.display_name ?? "Unknown Creator"}
                   </Link>
+                  {creator?.is_creator && (
+                    <span className="inline-flex items-center text-primary" title="Verified creator">
+                      <BadgeCheck size={14} />
+                    </span>
+                  )}
                   {canViewCreatorStats && creator?.is_monetized && (
                     <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
                       MONETIZED

@@ -24,6 +24,7 @@ import Playlist from "./pages/Playlist.tsx";
 import Playlists from "./pages/Playlists.tsx";
 import BrowsePlaylists from "./pages/BrowsePlaylists.tsx";
 import Mix from "./pages/Mix.tsx";
+import History from "./pages/History.tsx";
 
 const queryClient = new QueryClient();
 
@@ -53,7 +54,8 @@ const App = () => (
              <Route path="/playlists" element={<Playlists />} />
              <Route path="/playlist/:id" element={<Playlist />} />
              <Route path="/browse-playlists" element={<BrowsePlaylists />} />
-             <Route path="/mix" element={<Mix />} />
+              <Route path="/mix" element={<Mix />} />
+              <Route path="/history" element={<History />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -101,8 +101,9 @@ const Index = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
+      const nowIso = new Date().toISOString();
       const [videosRes, audiosRes, blogsRes, playlistsRes] = await Promise.all([
-        supabase.from("videos").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(20),
+        supabase.from("videos").select("*").eq("visibility", "public").or(`publish_at.is.null,publish_at.lte.${nowIso}`).order("created_at", { ascending: false }).limit(20),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
         supabase.from("playlists").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(6),
