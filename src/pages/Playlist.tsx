@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Play, Share2, Heart, Trash2, Plus, Loader2, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Play, Share2, Heart, Trash2, Plus, Loader2, Search, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePlaylist, type PlaylistWithVideos } from "@/hooks/usePlaylist";
@@ -49,6 +49,10 @@ const Playlist = () => {
   const [isOwner, setIsOwner] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
   const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
+
+  // Drag-and-drop state
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const updatePlaylistItemsFromVideos = (nextVideos: VideoWithDetails[]) => {
     setPlaylist((prev) => {
@@ -247,6 +251,43 @@ const Playlist = () => {
     }
   };
 
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndexRef.current !== null && dragIndexRef.current !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = async (dropIndex: number) => {
+    const fromIndex = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+
+    if (fromIndex === null || fromIndex === dropIndex) return;
+
+    const previous = [...videos];
+    const reordered = [...videos];
+    const [dragged] = reordered.splice(fromIndex, 1);
+    reordered.splice(dropIndex, 0, dragged);
+
+    setVideos(reordered);
+    updatePlaylistItemsFromVideos(reordered);
+    const saved = await persistVideoOrder(reordered);
+    if (!saved) {
+      setVideos(previous);
+      updatePlaylistItemsFromVideos(previous);
+    }
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+  };
+
   const handleDeletePlaylist = async () => {
     if (!id || !confirm("Are you sure you want to delete this playlist?")) return;
     const success = await deletePlaylist(id);
@@ -440,8 +481,25 @@ const Playlist = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className="flex gap-3 items-center group p-2 rounded-lg hover:bg-card transition-colors"
+                  draggable={isOwner}
+                  onDragStart={isOwner ? () => handleDragStart(index) : undefined}
+                  onDragOver={isOwner ? (e) => handleDragOver(e, index) : undefined}
+                  onDrop={isOwner ? () => handleDrop(index) : undefined}
+                  onDragEnd={isOwner ? handleDragEnd : undefined}
+                  className={`flex gap-3 items-center group p-2 rounded-lg transition-colors ${
+                    dragOverIndex === index
+                      ? "bg-primary/10 border-2 border-primary/40"
+                      : "hover:bg-card border-2 border-transparent"
+                  }`}
                 >
+                  {isOwner && (
+                    <div
+                      className="text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 px-0.5"
+                      aria-label="Drag to reorder"
+                    >
+                      <GripVertical size={16} />
+                    </div>
+                  )}
                   <div className="text-muted-foreground font-semibold w-8 text-right shrink-0">
                     {index + 1}
                   </div>

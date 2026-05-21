@@ -17,7 +17,8 @@ export interface Playlist {
 export interface PlaylistItem {
   id: string;
   playlist_id: string;
-  video_id: string;
+  video_id: string | null;
+  audio_id?: string | null;
   position: number;
   added_at: string;
 }
