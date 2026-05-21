@@ -4,7 +4,7 @@ import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
-import { Eye, Clock, Share2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, Clock, Share2, User, ChevronDown, ChevronUp, BadgeCheck } from "lucide-react";
 import VideoReactions from "@/components/VideoReactions";
 import SubscribeButton from "@/components/SubscribeButton";
 import VideoComments from "@/components/VideoComments";
@@ -32,6 +32,7 @@ interface CreatorProfile {
   avatar_url: string | null;
   subscriber_count?: number;
   is_monetized?: boolean;
+  is_creator?: boolean;
 }
 
 interface PlaylistContext {
@@ -89,6 +90,7 @@ const Watch = () => {
 
     const load = async () => {
       setLoading(true);
+      const nowIso = new Date().toISOString();
 
       // Fetch video
       const { data: vid } = await supabase
@@ -113,8 +115,8 @@ const Watch = () => {
       // Fetch creator profile
       const canViewEligibility = isAdmin || user?.id === vid.user_id;
       const profileSelect = canViewEligibility
-        ? "display_name, avatar_url, subscriber_count, is_monetized"
-        : "display_name, avatar_url";
+        ? "display_name, avatar_url, subscriber_count, is_monetized, is_creator"
+        : "display_name, avatar_url, is_creator";
       const { data: profile } = await (supabase
         .from("profiles") as any)
         .select(profileSelect)
@@ -127,7 +129,8 @@ const Watch = () => {
         .from("videos")
         .select("*")
         .neq("id", id)
-        .eq("is_published", true)
+        .eq("visibility", "public")
+        .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
         .order("views", { ascending: false })
         .limit(8);
       setRelated(rel ?? []);
@@ -136,7 +139,7 @@ const Watch = () => {
     };
 
     load();
-  }, [id]);
+  }, [id, isAdmin, user?.id]);
 
   // Load playlist context when ?list= is present
   useEffect(() => {
@@ -373,6 +376,11 @@ const Watch = () => {
                   <Link to={`/creator/${video.user_id}`} className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors">
                     {creator?.display_name ?? "Unknown Creator"}
                   </Link>
+                  {creator?.is_creator && (
+                    <span className="inline-flex items-center text-primary" title="Verified creator">
+                      <BadgeCheck size={14} />
+                    </span>
+                  )}
                   {canViewCreatorStats && creator?.is_monetized && (
                     <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
                       MONETIZED

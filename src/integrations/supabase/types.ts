@@ -324,12 +324,14 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
+          publish_at: string | null
           subtitle_url: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
           user_id: string
           video_url: string
+          visibility: Database["public"]["Enums"]["video_visibility"]
           views: number
         }
         Insert: {
@@ -339,12 +341,14 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          publish_at?: string | null
           subtitle_url?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
           user_id: string
           video_url: string
+          visibility?: Database["public"]["Enums"]["video_visibility"]
           views?: number
         }
         Update: {
@@ -354,12 +358,14 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          publish_at?: string | null
           subtitle_url?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           video_url?: string
+          visibility?: Database["public"]["Enums"]["video_visibility"]
           views?: number
         }
         Relationships: []
@@ -448,6 +454,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
+      video_visibility: "public" | "unlisted" | "private"
     }
     CompositeTypes: {
       [_ in never]: never

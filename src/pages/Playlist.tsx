@@ -158,6 +158,7 @@ const Playlist = () => {
 
       // Fetch videos in playlist
       if (playlistData.items.length > 0) {
+        const nowIso = new Date().toISOString();
         const videoIds = playlistData.items
           .map((item) => item.video_id)
           .filter((videoId): videoId is string => Boolean(videoId));
@@ -167,7 +168,7 @@ const Playlist = () => {
             .select("id, title, thumbnail_url, views, duration, category, user_id")
             .in("id", videoIds);
           if (!ownsPlaylist) {
-            playlistVideosQuery.eq("is_published", true);
+            playlistVideosQuery.eq("visibility", "public").or(`publish_at.is.null,publish_at.lte.${nowIso}`);
           }
           const { data: videosData } = await playlistVideosQuery;
 

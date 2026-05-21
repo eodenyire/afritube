@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SubscribeButton from "@/components/SubscribeButton";
-import { User, Eye, Clock, Play, Music, BookOpen, ListVideo } from "lucide-react";
+import { User, Eye, Clock, Play, Music, BookOpen, ListVideo, BadgeCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ interface Profile {
   bio: string | null;
   subscriber_count?: number;
   is_monetized?: boolean;
+  is_creator?: boolean;
   created_at: string;
 }
 
@@ -82,10 +83,11 @@ const CreatorProfile = () => {
     if (!userId) return;
     const load = async () => {
       setLoading(true);
+      const nowIso = new Date().toISOString();
       const canViewEligibility = isAdmin || user?.id === userId;
       const profileSelect = canViewEligibility
-        ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, created_at"
-        : "user_id, display_name, avatar_url, bio, created_at";
+        ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, is_creator, created_at"
+        : "user_id, display_name, avatar_url, bio, is_creator, created_at";
       const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }, { data: pls }] =
         await Promise.all([
           (supabase
@@ -97,7 +99,8 @@ const CreatorProfile = () => {
             .from("videos")
             .select("id, title, thumbnail_url, views, duration, created_at")
             .eq("user_id", userId)
-            .eq("is_published", true)
+            .eq("visibility", "public")
+            .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
             .order("created_at", { ascending: false }),
           supabase
             .from("audio_tracks")
@@ -209,6 +212,11 @@ const CreatorProfile = () => {
               <h1 className="font-display font-bold text-xl text-foreground truncate">
                 {profile.display_name ?? "Unknown Creator"}
               </h1>
+              {profile.is_creator && (
+                <span className="inline-flex items-center text-primary" title="Verified creator">
+                  <BadgeCheck size={16} />
+                </span>
+              )}
               {canViewEligibility && profile.is_monetized && (
                 <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                   ✦ MONETIZED

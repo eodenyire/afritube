@@ -58,17 +58,19 @@ const Search = () => {
     if (!q.trim()) return;
     setLoading(true);
     setHasSearched(true);
+    const normalizedQuery = q.trim().toLowerCase();
     const term = `%${q.trim()}%`;
+    const nowIso = new Date().toISOString();
 
     const [videosRes, audiosRes, blogsRes] = await Promise.all([
       activeType === "all" || activeType === "videos"
         ? supabase
             .from("videos")
             .select("*")
-            .eq("is_published", true)
-            .or(`title.ilike.${term},description.ilike.${term},category.ilike.${term}`)
+            .eq("visibility", "public")
+            .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
             .order("views", { ascending: false })
-            .limit(20)
+            .limit(200)
         : Promise.resolve({ data: [] }),
       activeType === "all" || activeType === "music"
         ? supabase
@@ -90,7 +92,12 @@ const Search = () => {
         : Promise.resolve({ data: [] }),
     ]);
 
-    const vids = videosRes.data ?? [];
+    const vids = (videosRes.data ?? []).filter((video: any) => {
+      const title = (video.title ?? "").toLowerCase();
+      const description = (video.description ?? "").toLowerCase();
+      const category = (video.category ?? "").toLowerCase();
+      return title.includes(normalizedQuery) || description.includes(normalizedQuery) || category.includes(normalizedQuery);
+    }).slice(0, 20);
     const auds = audiosRes.data ?? [];
     const blgs = blogsRes.data ?? [];
 

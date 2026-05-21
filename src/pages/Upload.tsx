@@ -134,6 +134,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
+  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [publishAt, setPublishAt] = useState("");
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistTarget, setPlaylistTarget] = useState<string>("none");
   const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
@@ -354,6 +356,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnail_url: string | null;
         category: string;
         duration: number;
+        visibility: "public" | "unlisted" | "private";
+        publish_at: string | null;
         subtitle_url?: string | null;
       } = {
         user_id: userId,
@@ -363,6 +367,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnail_url: thumbnailUrl,
         category,
         duration,
+        visibility,
+        publish_at: publishAt ? new Date(publishAt).toISOString() : null,
       };
       if (subtitleUrl) {
         videoPayload.subtitle_url = subtitleUrl;
@@ -438,6 +444,30 @@ function VideoUploadForm({ userId }: { userId: string }) {
             <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
             <SelectContent>{videoCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label>Visibility</Label>
+          <Select value={visibility} onValueChange={(value: "public" | "unlisted" | "private") => setVisibility(value)}>
+            <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="unlisted">Unlisted</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="publish-at">Schedule publish (optional)</Label>
+          <Input
+            id="publish-at"
+            type="datetime-local"
+            value={publishAt}
+            onChange={(e) => setPublishAt(e.target.value)}
+            className="mt-1.5"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Leave empty to publish immediately (if visibility is public/unlisted).
+          </p>
         </div>
         <div>
           <Label>Add to playlist (optional)</Label>
