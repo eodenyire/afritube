@@ -17,6 +17,9 @@ import blog1 from "@/assets/blog-1.jpg";
 
 type ContentType = "all" | "videos" | "music" | "blogs";
 
+const isContentType = (value: string | null): value is ContentType =>
+  value === "all" || value === "videos" || value === "music" || value === "blogs";
+
 const formatViews = (n: number) => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -43,7 +46,8 @@ const Search = () => {
   const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
-  const initialType = (searchParams.get("type") as ContentType) ?? "all";
+  const initialTypeParam = searchParams.get("type");
+  const initialType: ContentType = isContentType(initialTypeParam) ? initialTypeParam : "all";
 
   const [query, setQuery] = useState(initialQuery);
   const [activeType, setActiveType] = useState<ContentType>(initialType);
@@ -54,16 +58,16 @@ const Search = () => {
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [hasSearched, setHasSearched] = useState(false);
 
-  const performSearch = async (q: string) => {
-    if (!q.trim()) return;
+  const performSearch = async (q: string, type: ContentType = activeType) => {
     setLoading(true);
     setHasSearched(true);
     const normalizedQuery = q.trim().toLowerCase();
     const term = `%${q.trim()}%`;
+    const hasQuery = normalizedQuery.length > 0;
     const nowIso = new Date().toISOString();
 
     const [videosRes, audiosRes, blogsRes] = await Promise.all([
-      activeType === "all" || activeType === "videos"
+      type === "all" || type === "videos"
         ? supabase
             .from("videos")
             .select("*")
@@ -72,32 +76,40 @@ const Search = () => {
             .order("views", { ascending: false })
             .limit(200)
         : Promise.resolve({ data: [] }),
-      activeType === "all" || activeType === "music"
-        ? supabase
-            .from("audio_tracks")
-            .select("*")
-            .eq("is_published", true)
-            .or(`title.ilike.${term},artist_name.ilike.${term},genre.ilike.${term}`)
-            .order("streams", { ascending: false })
-            .limit(20)
+      type === "all" || type === "music"
+        ? (() => {
+            let query = supabase
+              .from("audio_tracks")
+              .select("*")
+              .eq("is_published", true);
+            if (hasQuery) {
+              query = query.or(`title.ilike.${term},artist_name.ilike.${term},genre.ilike.${term}`);
+            }
+            return query.order("streams", { ascending: false }).limit(20);
+          })()
         : Promise.resolve({ data: [] }),
-      activeType === "all" || activeType === "blogs"
-        ? supabase
-            .from("blog_posts")
-            .select("*")
-            .eq("is_published", true)
-            .or(`title.ilike.${term},content.ilike.${term},category.ilike.${term}`)
-            .order("created_at", { ascending: false })
-            .limit(20)
+      type === "all" || type === "blogs"
+        ? (() => {
+            let query = supabase
+              .from("blog_posts")
+              .select("*")
+              .eq("is_published", true);
+            if (hasQuery) {
+              query = query.or(`title.ilike.${term},content.ilike.${term},category.ilike.${term}`);
+            }
+            return query.order("created_at", { ascending: false }).limit(20);
+          })()
         : Promise.resolve({ data: [] }),
     ]);
 
-    const vids = (videosRes.data ?? []).filter((video: any) => {
-      const title = (video.title ?? "").toLowerCase();
-      const description = (video.description ?? "").toLowerCase();
-      const category = (video.category ?? "").toLowerCase();
-      return title.includes(normalizedQuery) || description.includes(normalizedQuery) || category.includes(normalizedQuery);
-    }).slice(0, 20);
+    const vids = hasQuery
+      ? (videosRes.data ?? []).filter((video: any) => {
+          const title = (video.title ?? "").toLowerCase();
+          const description = (video.description ?? "").toLowerCase();
+          const category = (video.category ?? "").toLowerCase();
+          return title.includes(normalizedQuery) || description.includes(normalizedQuery) || category.includes(normalizedQuery);
+        }).slice(0, 20)
+      : (videosRes.data ?? []).slice(0, 20);
     const auds = audiosRes.data ?? [];
     const blgs = blogsRes.data ?? [];
 
@@ -127,22 +139,27 @@ const Search = () => {
 
   // Run search on mount if query param exists
   useEffect(() => {
-    if (initialQuery) performSearch(initialQuery);
+    performSearch(initialQuery, initialType);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearchParams({ q: query, type: activeType });
-    performSearch(query);
+    if (query.trim()) {
+      setSearchParams({ q: query, type: activeType });
+    } else {
+      setSearchParams({ type: activeType });
+    }
+    performSearch(query, activeType);
   };
 
   const handleTypeChange = (type: ContentType) => {
     setActiveType(type);
     if (query.trim()) {
       setSearchParams({ q: query, type });
-      // Re-search with new type after state update
-      setTimeout(() => performSearch(query), 0);
+    } else {
+      setSearchParams({ type });
     }
+    performSearch(query, type);
   };
 
   const totalResults = videos.length + audios.length + blogs.length;
