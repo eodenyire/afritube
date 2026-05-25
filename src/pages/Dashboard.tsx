@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -112,6 +112,8 @@ const Dashboard = () => {
   const [premiumSubscription, setPremiumSubscription] = useState<PremiumSubscription | null>(null);
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [premiumActionLoading, setPremiumActionLoading] = useState<"" | "monthly" | "yearly" | "cancel">("");
+  const [recommendationCategorySignals, setRecommendationCategorySignals] = useState<Record<string, number>>({});
+  const [lastAnalyticsUpdatedAt, setLastAnalyticsUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -119,53 +121,107 @@ const Dashboard = () => {
     }
   }, [user, authLoading, navigate]);
 
+  const fetchContent = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const [vRes, aRes, bRes] = await Promise.all([
+      supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at, description, visibility, publish_at, processing_status").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("audio_tracks").select("id, title, artist_name, cover_url, streams, genre, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("blog_posts").select("id, title, cover_url, likes, comments_count, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+    ]);
+    setVideos(vRes.data ?? []);
+    setAudios(aRes.data ?? []);
+    setBlogs(bRes.data ?? []);
+    setLoading(false);
+    setLastAnalyticsUpdatedAt(new Date().toISOString());
+  }, [user]);
+
+  const fetchRecommendationStats = useCallback(async () => {
+    if (!user) return;
+    const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await (supabase as any)
+      .from("recommendation_events")
+      .select("event_type, context, videos(category)")
+      .eq("user_id", user.id)
+      .gte("created_at", thirtyDaysAgoIso)
+      .limit(2000);
+
+    const counts: RecommendationStats = {
+      searchQueries: 0,
+      resultClicks: 0,
+      watchStarts: 0,
+      watchCompletions: 0,
+    };
+    const categorySignals: Record<string, number> = {};
+
+    (data ?? []).forEach((event: any) => {
+      if (event.event_type === "search_query") counts.searchQueries += 1;
+      if (event.event_type === "search_result_click") counts.resultClicks += 1;
+      if (event.event_type === "watch_start") counts.watchStarts += 1;
+      if (event.event_type === "watch_complete") counts.watchCompletions += 1;
+
+      const category = event.videos?.category ?? event.context?.category ?? null;
+      if (!category || typeof category !== "string") return;
+      const weight = event.event_type === "watch_complete"
+        ? 5
+        : event.event_type === "watch_start"
+          ? 3
+          : event.event_type === "search_result_click"
+            ? 2
+            : 1;
+      categorySignals[category] = (categorySignals[category] ?? 0) + weight;
+    });
+
+    setRecommendationStats(counts);
+    setRecommendationCategorySignals(categorySignals);
+    setLastAnalyticsUpdatedAt(new Date().toISOString());
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
-    const fetchContent = async () => {
-      setLoading(true);
-      const [vRes, aRes, bRes] = await Promise.all([
-        supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at, description, visibility, publish_at, processing_status").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("audio_tracks").select("id, title, artist_name, cover_url, streams, genre, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("blog_posts").select("id, title, cover_url, likes, comments_count, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
-      ]);
-      setVideos(vRes.data ?? []);
-      setAudios(aRes.data ?? []);
-      setBlogs(bRes.data ?? []);
-      setLoading(false);
-    };
     fetchContent();
-  }, [user]);
+  }, [user, fetchContent]);
 
   useEffect(() => {
     if (!user) return;
-    const fetchRecommendationStats = async () => {
-      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await supabase
-        .from("recommendation_events")
-        .select("event_type")
-        .eq("user_id", user.id)
-        .gte("created_at", thirtyDaysAgoIso)
-        .limit(2000);
+    fetchRecommendationStats();
+  }, [user, fetchRecommendationStats]);
 
-      const counts: RecommendationStats = {
-        searchQueries: 0,
-        resultClicks: 0,
-        watchStarts: 0,
-        watchCompletions: 0,
-      };
+  useEffect(() => {
+    if (!user) return;
 
-      (data ?? []).forEach((event: any) => {
-        if (event.event_type === "search_query") counts.searchQueries += 1;
-        if (event.event_type === "search_result_click") counts.resultClicks += 1;
-        if (event.event_type === "watch_start") counts.watchStarts += 1;
-        if (event.event_type === "watch_complete") counts.watchCompletions += 1;
-      });
-
-      setRecommendationStats(counts);
+    const refreshAll = async () => {
+      await Promise.all([fetchContent(), fetchRecommendationStats(), refreshProfile()]);
     };
 
-    fetchRecommendationStats();
-  }, [user]);
+    const channel = supabase
+      .channel(`dashboard-analytics-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "videos", filter: `user_id=eq.${user.id}` }, () => {
+        void refreshAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "audio_tracks", filter: `user_id=eq.${user.id}` }, () => {
+        void refreshAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "blog_posts", filter: `user_id=eq.${user.id}` }, () => {
+        void refreshAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "recommendation_events", filter: `user_id=eq.${user.id}` }, () => {
+        void fetchRecommendationStats();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` }, () => {
+        void refreshProfile();
+      })
+      .subscribe();
+
+    const pollId = window.setInterval(() => {
+      void refreshAll();
+    }, 60000);
+
+    return () => {
+      window.clearInterval(pollId);
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchContent, fetchRecommendationStats, refreshProfile]);
 
   useEffect(() => {
     if (!user) return;
