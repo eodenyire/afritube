@@ -22,6 +22,9 @@ interface VideoItem {
   views: number;
   category: string;
   created_at: string;
+  visibility: "public" | "unlisted" | "private";
+  publish_at: string | null;
+  processing_status: "processing" | "ready" | "failed" | null;
 }
 
 interface AudioItem {
@@ -70,7 +73,7 @@ const Dashboard = () => {
     const fetchContent = async () => {
       setLoading(true);
       const [vRes, aRes, bRes] = await Promise.all([
-        supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at, visibility, publish_at, processing_status").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("audio_tracks").select("id, title, artist_name, cover_url, streams, genre, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("blog_posts").select("id, title, cover_url, likes, comments_count, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
@@ -248,6 +251,7 @@ const Dashboard = () => {
                       title={v.title}
                       meta={`${v.views.toLocaleString()} views · ${v.category}`}
                       date={v.created_at}
+                      status={getVideoStatus(v)}
                       onDelete={() => handleDelete("videos", v.id)}
                     />
                   ))}
@@ -308,9 +312,22 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function ContentRow({ image, title, meta, date, onDelete }: {
-  image: string | null; title: string; meta: string; date: string; onDelete: () => void;
+function ContentRow({ image, title, meta, date, status, onDelete }: {
+  image: string | null;
+  title: string;
+  meta: string;
+  date: string;
+  status?: "draft" | "scheduled" | "processing" | "failed" | "live";
+  onDelete: () => void;
 }) {
+  const statusClass: Record<NonNullable<typeof status>, string> = {
+    live: "bg-emerald-500/15 text-emerald-500",
+    draft: "bg-slate-500/15 text-slate-500",
+    scheduled: "bg-amber-500/15 text-amber-500",
+    processing: "bg-sky-500/15 text-sky-500",
+    failed: "bg-destructive/15 text-destructive",
+  };
+
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors">
       <div className="w-16 h-12 rounded-lg bg-secondary overflow-hidden shrink-0">
@@ -319,7 +336,14 @@ function ContentRow({ image, title, meta, date, onDelete }: {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-foreground truncate">{title}</p>
+          {status && (
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${statusClass[status]}`}>
+              {status}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">{meta}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -330,6 +354,14 @@ function ContentRow({ image, title, meta, date, onDelete }: {
       </div>
     </div>
   );
+}
+
+function getVideoStatus(video: VideoItem): "draft" | "scheduled" | "processing" | "failed" | "live" {
+  if (video.processing_status === "failed") return "failed";
+  if (video.processing_status === "processing") return "processing";
+  if (video.visibility === "private") return "draft";
+  if (video.publish_at && new Date(video.publish_at).getTime() > Date.now()) return "scheduled";
+  return "live";
 }
 
 function EmptyState({ icon, text, cta, onClick }: { icon: React.ReactNode; text: string; cta: string; onClick: () => void }) {

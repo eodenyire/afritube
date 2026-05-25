@@ -72,6 +72,7 @@ const Search = () => {
             .from("videos")
             .select("*")
             .eq("visibility", "public")
+            .eq("processing_status", "ready")
             .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
             .order("views", { ascending: false })
             .limit(200)

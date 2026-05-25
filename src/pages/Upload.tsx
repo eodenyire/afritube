@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,6 +141,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [playlistTarget, setPlaylistTarget] = useState<string>("none");
   const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
   const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState("Waiting to upload");
   const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
   const THUMBNAIL_JPEG_QUALITY = 0.85;
   const THUMBNAIL_TIMEOUT_MS = 8000;
@@ -278,7 +281,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
       el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
     });
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ saveAsDraft = false }: { saveAsDraft?: boolean } = {}) => {
     if (!videoFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and video file are required.", variant: "destructive" });
       return;
@@ -291,11 +294,28 @@ function VideoUploadForm({ userId }: { userId: string }) {
       });
       return;
     }
+
+    if (publishAt && Number.isNaN(new Date(publishAt).getTime())) {
+      toast({
+        title: "Invalid publish date",
+        description: "Please select a valid schedule date and time.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalVisibility: "public" | "unlisted" | "private" = saveAsDraft ? "private" : visibility;
+    const finalPublishAt = saveAsDraft ? null : (publishAt ? new Date(publishAt).toISOString() : null);
+
     setUploading(true);
+    setUploadProgress(5);
+    setUploadStage(saveAsDraft ? "Saving draft metadata" : "Preparing upload");
     try {
       console.log("Starting video upload:", { fileName: videoFile.name, size: videoFile.size });
       const duration = await getFileDuration(videoFile, "video");
       console.log("Video duration:", duration);
+      setUploadProgress(12);
+      setUploadStage("Uploading video");
 
       const videoPath = `${userId}/${Date.now()}-${videoFile.name}`;
       console.log("Uploading video to:", videoPath);
@@ -303,8 +323,10 @@ function VideoUploadForm({ userId }: { userId: string }) {
       if (vErr) throw new Error(`Video upload failed: ${vErr.message}`);
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
       console.log("Video uploaded successfully:", videoUrl);
+      setUploadProgress(58);
 
       let thumbnailUrl: string | null = null;
+      setUploadStage("Generating thumbnail");
       console.log("Generating thumbnail...");
       const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
       if (!finalThumbFile) {
@@ -314,6 +336,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
           description: "We couldn't auto-generate a thumbnail. You can upload one later.",
         });
       } else {
+        setUploadStage("Uploading thumbnail");
         console.log("Uploading thumbnail:", { name: finalThumbFile.name, size: finalThumbFile.size });
         const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
         const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
@@ -321,6 +344,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
         console.log("Thumbnail uploaded successfully:", thumbnailUrl);
       }
+      setUploadProgress(74);
 
       let subtitleUrl: string | null = null;
       if (subtitleFile) {
@@ -328,6 +352,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
           throw new Error("Subtitle file must be an .srt file.");
         }
         try {
+          setUploadStage("Uploading subtitles");
           const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
           console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
           const { error: sErr } = await supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
@@ -346,6 +371,8 @@ function VideoUploadForm({ userId }: { userId: string }) {
           });
         }
       }
+      setUploadProgress(86);
+      setUploadStage("Saving video metadata");
 
       console.log("Saving video to database:", { title, thumbnailUrl, subtitleUrl });
       const videoPayload: {
@@ -358,6 +385,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         duration: number;
         visibility: "public" | "unlisted" | "private";
         publish_at: string | null;
+        processing_status?: "processing" | "ready" | "failed";
         subtitle_url?: string | null;
       } = {
         user_id: userId,
@@ -367,8 +395,9 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnail_url: thumbnailUrl,
         category,
         duration,
-        visibility,
-        publish_at: publishAt ? new Date(publishAt).toISOString() : null,
+        visibility: finalVisibility,
+        publish_at: finalPublishAt,
+        processing_status: "processing",
       };
       if (subtitleUrl) {
         videoPayload.subtitle_url = subtitleUrl;
@@ -386,8 +415,28 @@ function VideoUploadForm({ userId }: { userId: string }) {
           });
         }
       }
+      if (dbErr?.message?.includes("processing_status")) {
+        const { processing_status, ...fallbackPayload } = videoPayload;
+        ({ data: createdVideo, error: dbErr } = await supabase.from("videos").insert(fallbackPayload).select("id").single());
+      }
       if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
       console.log("Video saved to database successfully");
+      setUploadProgress(92);
+      setUploadStage("Finalizing processing");
+
+      if (createdVideo?.id) {
+        const { error: processingErr } = await supabase
+          .from("videos")
+          .update({ processing_status: "ready" })
+          .eq("id", createdVideo.id);
+        if (processingErr) {
+          await supabase
+            .from("videos")
+            .update({ processing_status: "failed" })
+            .eq("id", createdVideo.id);
+          throw new Error(`Video processing failed: ${processingErr.message}`);
+        }
+      }
 
       let targetPlaylistId: string | null = null;
       if (playlistTarget === "create_new") {
@@ -407,10 +456,18 @@ function VideoUploadForm({ userId }: { userId: string }) {
         }
       }
 
-      toast({ title: "Video uploaded! 🎬", description: "Your video is now live on AfriTube." });
+      setUploadProgress(100);
+      setUploadStage("Completed");
+      toast({
+        title: saveAsDraft ? "Draft saved" : "Video uploaded! 🎬",
+        description: saveAsDraft
+          ? "Your draft is private in your dashboard until you're ready to publish."
+          : "Your video is now live on AfriTube.",
+      });
       navigate("/");
     } catch (err: any) {
       console.error("Video upload error:", err);
+      setUploadStage("Failed");
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -499,9 +556,28 @@ function VideoUploadForm({ userId }: { userId: string }) {
           </div>
         )}
       </div>
-      <Button onClick={handleSubmit} disabled={uploading} className="w-full bg-gradient-gold text-primary-foreground font-semibold rounded-full hover:opacity-90">
-        {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Uploading...</> : <><UploadIcon size={18} className="mr-2" /> Publish Video</>}
-      </Button>
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{uploadStage}</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <Progress value={uploadProgress} className="h-2" />
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Button
+          variant="outline"
+          onClick={() => handleSubmit({ saveAsDraft: true })}
+          disabled={uploading}
+          className="w-full rounded-full"
+        >
+          {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Saving...</> : <>Save as Draft</>}
+        </Button>
+        <Button onClick={() => handleSubmit()} disabled={uploading} className="w-full bg-gradient-gold text-primary-foreground font-semibold rounded-full hover:opacity-90">
+          {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Uploading...</> : <><UploadIcon size={18} className="mr-2" /> Publish Video</>}
+        </Button>
+      </div>
     </div>
   );
 }

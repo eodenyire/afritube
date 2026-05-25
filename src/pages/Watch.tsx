@@ -25,6 +25,7 @@ interface Video {
   category: string | null;
   created_at: string;
   user_id: string;
+  processing_status: "processing" | "ready" | "failed" | null;
 }
 
 interface CreatorProfile {
@@ -56,6 +57,7 @@ const Watch = () => {
   const [playlistCtx, setPlaylistCtx] = useState<PlaylistContext | null>(null);
   const [showRelated, setShowRelated] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [subtitleTrackUrl, setSubtitleTrackUrl] = useState<string | null>(null);
   const adLoggedForVideoRef = useRef<string | null>(null);
@@ -91,6 +93,9 @@ const Watch = () => {
 
     const load = async () => {
       setLoading(true);
+      setVideo(null);
+      setRelated([]);
+      setUnavailableReason(null);
       const nowIso = new Date().toISOString();
 
       // Fetch video
@@ -104,6 +109,12 @@ const Watch = () => {
         setLoading(false);
         return;
       }
+      if (vid.processing_status !== "ready" && !isAdmin && user?.id !== vid.user_id) {
+        setUnavailableReason("This video is still processing and will be available shortly.");
+        setLoading(false);
+        return;
+      }
+      setUnavailableReason(null);
       setVideo(vid);
 
       // Increment view count (fire-and-forget)
@@ -131,6 +142,7 @@ const Watch = () => {
         .select("*")
         .neq("id", id)
         .eq("visibility", "public")
+        .eq("processing_status", "ready")
         .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
         .order("views", { ascending: false })
         .limit(8);
@@ -179,6 +191,7 @@ const Watch = () => {
         const { data: vids } = await supabase
           .from("videos")
           .select("id, title, thumbnail_url, duration")
+          .eq("processing_status", "ready")
           .in("id", dedupedIds);
         const byId = new Map(((vids ?? []) as any[]).map((video: any) => [video.id, video]));
         const ordered = dedupedIds.map((videoId) => byId.get(videoId)).filter(Boolean) as any[];
@@ -210,6 +223,7 @@ const Watch = () => {
       const { data: vids } = await supabase
         .from("videos")
         .select("id, title, thumbnail_url, duration")
+        .eq("processing_status", "ready")
         .in("id", videoIds);
       const ordered = videoIds
         .map((vid: string) => (vids ?? []).find((v: any) => v.id === vid))
@@ -315,7 +329,7 @@ const Watch = () => {
         <Navbar />
         <div className="pt-20 flex flex-col items-center justify-center min-h-[60vh] text-center">
           <h1 className="text-2xl font-display font-bold text-foreground">Video not found</h1>
-          <p className="text-muted-foreground mt-2">This video may have been removed or doesn't exist.</p>
+          <p className="text-muted-foreground mt-2">{unavailableReason ?? "This video may have been removed or doesn't exist."}</p>
           <Link to="/">
             <Button className="mt-6 rounded-full">Go Home</Button>
           </Link>

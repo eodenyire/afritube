@@ -100,6 +100,7 @@ const CreatorProfile = () => {
             .select("id, title, thumbnail_url, views, duration, created_at")
             .eq("user_id", userId)
             .eq("visibility", "public")
+            .eq("processing_status", "ready")
             .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
             .order("created_at", { ascending: false }),
           supabase

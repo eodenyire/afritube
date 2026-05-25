@@ -39,6 +39,7 @@ export const useMix = (viewerId?: string, limit = 20) => {
       const { data: videos } = await (supabase
         .from("videos") as any)
         .select("id, title, thumbnail_url, duration, views, user_id, profiles(display_name)")
+        .eq("processing_status", "ready")
         .in("id", orderedIds);
 
       const videosById = new Map<string, any>(((videos ?? []) as any[]).map((video) => [video.id, video]));

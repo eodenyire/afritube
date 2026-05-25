@@ -398,6 +398,7 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
+          processing_status: Database["public"]["Enums"]["video_processing_status"]
           publish_at: string | null
           subtitle_url: string | null
           thumbnail_url: string | null
@@ -415,6 +416,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          processing_status?: Database["public"]["Enums"]["video_processing_status"]
           publish_at?: string | null
           subtitle_url?: string | null
           thumbnail_url?: string | null
@@ -432,6 +434,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          processing_status?: Database["public"]["Enums"]["video_processing_status"]
           publish_at?: string | null
           subtitle_url?: string | null
           thumbnail_url?: string | null
@@ -559,6 +562,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
       payout_status: "pending" | "approved" | "paid" | "rejected"
+      video_processing_status: "processing" | "ready" | "failed"
       video_visibility: "public" | "unlisted" | "private"
     }
     CompositeTypes: {
@@ -690,6 +694,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       playlist_type: ["album", "ep", "compilation", "custom", "watch_later"],
       payout_status: ["pending", "approved", "paid", "rejected"],
+      video_processing_status: ["processing", "ready", "failed"],
       video_visibility: ["public", "unlisted", "private"],
     },
   },
