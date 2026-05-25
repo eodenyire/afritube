@@ -1,49 +1,50 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface MixVideo {
+export interface RecommendedVideo {
   id: string;
   title: string;
   thumbnail_url: string | null;
   duration: number | null;
   views: number;
+  category: string | null;
   creator_name: string | null;
+  creator_avatar: string | null;
+  creator_is_monetized: boolean;
 }
 
-export const useMix = (viewerId?: string, limit = 20) => {
-  const [mixVideos, setMixVideos] = useState<MixVideo[]>([]);
+export const useRecommendations = (userId?: string, limit = 20) => {
+  const [recommendedVideos, setRecommendedVideos] = useState<RecommendedVideo[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!viewerId) {
-      setMixVideos([]);
+    if (!userId) {
+      setRecommendedVideos([]);
       return;
     }
 
     const load = async () => {
       setLoading(true);
-
       const boundedLimit = Math.max(1, Math.min(limit, 50));
-      const { data: ranked, error: mixError } = await (supabase as any).rpc("get_user_mix", {
-        p_viewer_id: viewerId,
+      const { data: ranked, error: rankingError } = await (supabase as any).rpc("get_recommended_videos", {
+        p_user_id: userId,
         p_limit: boundedLimit,
       });
 
-      if (mixError || !ranked?.length) {
-        setMixVideos([]);
+      if (rankingError || !ranked?.length) {
+        setRecommendedVideos([]);
         setLoading(false);
         return;
       }
 
       const orderedIds = (ranked as Array<{ video_id: string }>).map((row) => row.video_id);
-      const { data: videos } = await (supabase
-        .from("videos") as any)
-        .select("id, title, thumbnail_url, duration, views, user_id, profiles(display_name)")
-        .eq("processing_status", "ready")
+      const { data: videos } = await (supabase as any)
+        .from("videos")
+        .select("id, title, thumbnail_url, duration, views, category, user_id, profiles(display_name, avatar_url, is_monetized)")
         .in("id", orderedIds);
 
       const videosById = new Map<string, any>(((videos ?? []) as any[]).map((video) => [video.id, video]));
-      const orderedVideos: MixVideo[] = orderedIds
+      const orderedVideos: RecommendedVideo[] = orderedIds
         .map((id) => videosById.get(id))
         .filter(Boolean)
         .map((video) => ({
@@ -52,15 +53,18 @@ export const useMix = (viewerId?: string, limit = 20) => {
           thumbnail_url: video.thumbnail_url ?? null,
           duration: video.duration ?? null,
           views: Number(video.views ?? 0),
+          category: video.category ?? null,
           creator_name: video.profiles?.display_name ?? null,
+          creator_avatar: video.profiles?.avatar_url ?? null,
+          creator_is_monetized: !!video.profiles?.is_monetized,
         }));
 
-      setMixVideos(orderedVideos);
+      setRecommendedVideos(orderedVideos);
       setLoading(false);
     };
 
     load();
-  }, [viewerId, limit]);
+  }, [userId, limit]);
 
-  return { mixVideos, loading };
+  return { recommendedVideos, loading };
 };

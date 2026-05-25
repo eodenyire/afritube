@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, SlidersHorizontal, X, Play, Music, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logRecommendationEvent } from "@/lib/recommendationEvents";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import VideoCard from "@/components/VideoCard";
@@ -43,7 +44,7 @@ const contentTypes: { value: ContentType; label: string; icon: React.ReactNode }
 ];
 
 const Search = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
   const initialTypeParam = searchParams.get("type");
@@ -72,6 +73,7 @@ const Search = () => {
             .from("videos")
             .select("*")
             .eq("visibility", "public")
+            .eq("processing_status", "ready")
             .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
             .order("views", { ascending: false })
             .limit(200)
@@ -134,6 +136,16 @@ const Search = () => {
     setVideos(vids);
     setAudios(auds);
     setBlogs(blgs);
+    if (hasQuery && user?.id) {
+      logRecommendationEvent("search_query", {
+        userId: user.id,
+        context: {
+          query: q.trim(),
+          type,
+          result_count: vids.length + auds.length + blgs.length,
+        },
+      }).then();
+    }
     setLoading(false);
   };
 
@@ -163,6 +175,16 @@ const Search = () => {
   };
 
   const totalResults = videos.length + audios.length + blogs.length;
+  const handleVideoOpen = (videoId: string) => {
+    logRecommendationEvent("search_result_click", {
+      userId: user?.id,
+      videoId,
+      context: {
+        query: query.trim(),
+        type: activeType,
+      },
+    }).then();
+  };
 
   const videoCards = videos.map((v) => {
     const p = profiles[v.user_id];
@@ -280,7 +302,7 @@ const Search = () => {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {videoCards.map((v) => (
-                      <VideoCard key={v.id || v.title} {...v} />
+                      <VideoCard key={v.id || v.title} {...v} onOpen={handleVideoOpen} />
                     ))}
                   </div>
                 </motion.section>

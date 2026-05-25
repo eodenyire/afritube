@@ -16,6 +16,7 @@ import CategoryPills from "@/components/CategoryPills";
 import Footer from "@/components/Footer";
 import PlaylistCard from "@/components/PlaylistCard";
 import { useMix } from "@/hooks/useMix";
+import { useRecommendations } from "@/hooks/useRecommendations";
 
 import heroBg from "@/assets/hero-bg.jpg";
 import thumb1 from "@/assets/thumb-1.jpg";
@@ -97,13 +98,14 @@ const Index = () => {
   const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const { mixVideos, loading: mixLoading } = useMix(user?.id, 20);
+  const { recommendedVideos, loading: recommendationsLoading } = useRecommendations(user?.id, 20);
   const getMonetizedStatus = (value?: boolean) => isAdmin && !!value;
 
   useEffect(() => {
     const fetchAll = async () => {
       const nowIso = new Date().toISOString();
       const [videosRes, audiosRes, blogsRes, playlistsRes] = await Promise.all([
-        supabase.from("videos").select("*").eq("visibility", "public").or(`publish_at.is.null,publish_at.lte.${nowIso}`).order("created_at", { ascending: false }).limit(20),
+        supabase.from("videos").select("*").eq("visibility", "public").eq("processing_status", "ready").or(`publish_at.is.null,publish_at.lte.${nowIso}`).order("created_at", { ascending: false }).limit(20),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
         supabase.from("playlists").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(6),
@@ -177,8 +179,22 @@ const Index = () => {
       })
     : sampleVideos.map((v) => ({ ...v, category: "Trending", isMonetized: getMonetizedStatus(v.isMonetized) }));
 
+  const recommendedVideoCards = recommendedVideos.map((video) => ({
+    id: video.id,
+    title: video.title,
+    channel: video.creator_name ?? "Unknown",
+    views: formatViews(video.views),
+    duration: formatDuration(video.duration),
+    thumbnail: video.thumbnail_url ?? null,
+    avatar: video.creator_avatar ?? album1,
+    isMonetized: getMonetizedStatus(video.creator_is_monetized),
+    category: video.category ?? "General",
+  }));
+
   const videoCards = activeVideoCategory === "Trending"
-    ? [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8)
+    ? (recommendedVideoCards.length > 0
+        ? recommendedVideoCards.slice(0, 8)
+        : [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8))
     : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
 
   const audioCards = dbAudios.length > 0
@@ -269,7 +285,12 @@ const Index = () => {
       <main className="max-w-[1440px] mx-auto px-4 md:px-6 space-y-16 pb-20">
         {/* Videos */}
         <motion.section {...fadeUp} id="videos">
-          <SectionHeader icon={<Play size={22} />} title="Trending Videos" subtitle="The hottest content from across Africa" onSeeAll={() => navigate(`/search?type=videos${activeVideoCategory !== "Trending" ? `&q=${activeVideoCategory}` : ""}`)} />
+          <SectionHeader
+            icon={<Play size={22} />}
+            title={user && activeVideoCategory === "Trending" && recommendedVideoCards.length > 0 ? "Recommended Videos" : "Trending Videos"}
+            subtitle={user && activeVideoCategory === "Trending" && recommendedVideoCards.length > 0 ? "Personalized using your watch and search activity" : "The hottest content from across Africa"}
+            onSeeAll={() => navigate(`/search?type=videos${activeVideoCategory !== "Trending" ? `&q=${activeVideoCategory}` : ""}`)}
+          />
           <CategoryPills categories={videoCategories} onSelect={setActiveVideoCategory} />
           {user && (
             <div className="mt-6 rounded-2xl border border-border bg-card p-4 md:p-5">
@@ -312,7 +333,7 @@ const Index = () => {
               </div>
             </div>
           )}
-          {loading ? (
+          {loading || (user && activeVideoCategory === "Trending" && recommendationsLoading) ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
               {[1,2,3,4].map(i => (
                 <div key={i} className="space-y-3">
