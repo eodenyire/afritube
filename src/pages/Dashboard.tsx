@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Video, Music, BookOpen, Eye, Users, Clock,
-  DollarSign, Edit2, Upload, BarChart3, Loader2, Trash2, ListVideo
+  DollarSign, Edit2, Upload, BarChart3, Loader2, Trash2, ListVideo, Bell, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,6 +60,24 @@ interface RecommendationStats {
   watchCompletions: number;
 }
 
+interface NotificationItem {
+  id: string;
+  notification_type: string;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+interface PremiumSubscription {
+  id: string;
+  plan: "monthly" | "yearly";
+  status: "active" | "canceled" | "expired";
+  current_period_end: string;
+}
+
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -89,6 +107,11 @@ const Dashboard = () => {
     watchStarts: 0,
     watchCompletions: 0,
   });
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [premiumSubscription, setPremiumSubscription] = useState<PremiumSubscription | null>(null);
+  const [premiumLoading, setPremiumLoading] = useState(false);
+  const [premiumActionLoading, setPremiumActionLoading] = useState<"" | "monthly" | "yearly" | "cancel">("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -142,6 +165,34 @@ const Dashboard = () => {
     };
 
     fetchRecommendationStats();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchNotifications = async () => {
+      setNotificationsLoading(true);
+      const { data } = await (supabase as any)
+        .from("notifications")
+        .select("id, notification_type, title, body, entity_type, entity_id, is_read, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      setNotifications((data ?? []) as NotificationItem[]);
+      setNotificationsLoading(false);
+    };
+    fetchNotifications();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchPremium = async () => {
+      setPremiumLoading(true);
+      const { data } = await (supabase as any).rpc("get_my_premium_subscription");
+      const row = (data ?? [])[0];
+      setPremiumSubscription(row ?? null);
+      setPremiumLoading(false);
+    };
+    fetchPremium();
   }, [user]);
 
   const handleDelete = async (table: "videos" | "audio_tracks" | "blog_posts", id: string) => {
@@ -234,6 +285,52 @@ const Dashboard = () => {
   const completionRate = recommendationStats.watchStarts > 0
     ? Math.round((recommendationStats.watchCompletions / recommendationStats.watchStarts) * 100)
     : 0;
+  const unreadNotifications = notifications.filter((item) => !item.is_read).length;
+
+  const activatePremiumPlan = async (plan: "monthly" | "yearly") => {
+    setPremiumActionLoading(plan);
+    const { data, error } = await (supabase as any).rpc("activate_premium_subscription", { p_plan: plan });
+    if (error) {
+      toast({ title: "Could not activate premium", description: error.message, variant: "destructive" });
+      setPremiumActionLoading("");
+      return;
+    }
+    setPremiumSubscription((data ?? [])[0] ?? null);
+    toast({ title: `Premium ${plan} plan activated` });
+    setPremiumActionLoading("");
+  };
+
+  const cancelPremiumPlan = async () => {
+    setPremiumActionLoading("cancel");
+    const { data, error } = await (supabase as any).rpc("cancel_premium_subscription");
+    if (error) {
+      toast({ title: "Could not cancel premium", description: error.message, variant: "destructive" });
+      setPremiumActionLoading("");
+      return;
+    }
+    setPremiumSubscription((data ?? [])[0] ?? null);
+    toast({ title: "Premium subscription canceled" });
+    setPremiumActionLoading("");
+  };
+
+  const markAllNotificationsRead = async () => {
+    const unread = notifications.filter((item) => !item.is_read).map((item) => item.id);
+    if (unread.length === 0) return;
+    const nowIso = new Date().toISOString();
+    const { error } = await (supabase as any)
+      .from("notifications")
+      .update({ is_read: true, read_at: nowIso })
+      .in("id", unread)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast({ title: "Could not mark notifications as read", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
+    toast({ title: "All notifications marked as read" });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -299,6 +396,103 @@ const Dashboard = () => {
                   <p className="font-display text-xl font-bold text-foreground">{completionRate}%</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-8 bg-card border-border">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={18} className="text-primary" />
+                <h2 className="font-display font-semibold text-foreground">Premium Subscription</h2>
+                {premiumSubscription?.status === "active" && (
+                  <span className="ml-auto text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                    Active
+                  </span>
+                )}
+              </div>
+              {premiumLoading ? (
+                <p className="text-sm text-muted-foreground">Loading premium status...</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {premiumSubscription?.status === "active"
+                      ? `You are on the ${premiumSubscription.plan} plan until ${new Date(premiumSubscription.current_period_end).toLocaleDateString()}.`
+                      : "Unlock premium benefits: ad-light viewing, early access features, and priority support."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90"
+                      disabled={premiumActionLoading !== ""}
+                      onClick={() => activatePremiumPlan("monthly")}
+                    >
+                      Monthly plan
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      disabled={premiumActionLoading !== ""}
+                      onClick={() => activatePremiumPlan("yearly")}
+                    >
+                      Yearly plan
+                    </Button>
+                    {premiumSubscription?.status === "active" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={premiumActionLoading !== ""}
+                        onClick={cancelPremiumPlan}
+                      >
+                        Cancel premium
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="mb-8 bg-card border-border">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Bell size={18} className="text-primary" />
+                <h2 className="font-display font-semibold text-foreground">Notifications</h2>
+                {unreadNotifications > 0 && (
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                    {unreadNotifications} unread
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto rounded-full"
+                  disabled={unreadNotifications === 0}
+                  onClick={markAllNotificationsRead}
+                >
+                  Mark all read
+                </Button>
+              </div>
+              {notificationsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading notifications...</p>
+              ) : notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No notifications yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map((item) => (
+                    <div key={item.id} className={`rounded-lg border p-3 ${item.is_read ? "border-border" : "border-primary/30 bg-primary/5"}`}>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">{item.title}</p>
+                          {item.body ? <p className="text-xs text-muted-foreground mt-0.5">{item.body}</p> : null}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground shrink-0">{formatRelativeTime(item.created_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -506,6 +700,19 @@ const Dashboard = () => {
     </div>
   );
 };
+
+function formatRelativeTime(iso: string) {
+  const thenMs = new Date(iso).getTime();
+  if (Number.isNaN(thenMs)) return "";
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - thenMs) / 1000));
+  if (diffSeconds < 60) return "just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
