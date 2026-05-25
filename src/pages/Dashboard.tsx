@@ -53,6 +53,13 @@ interface BlogItem {
   created_at: string;
 }
 
+interface RecommendationStats {
+  searchQueries: number;
+  resultClicks: number;
+  watchStarts: number;
+  watchCompletions: number;
+}
+
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -76,6 +83,12 @@ const Dashboard = () => {
   const [editVisibility, setEditVisibility] = useState<"public" | "unlisted" | "private">("public");
   const [editPublishAt, setEditPublishAt] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [recommendationStats, setRecommendationStats] = useState<RecommendationStats>({
+    searchQueries: 0,
+    resultClicks: 0,
+    watchStarts: 0,
+    watchCompletions: 0,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -98,6 +111,37 @@ const Dashboard = () => {
       setLoading(false);
     };
     fetchContent();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchRecommendationStats = async () => {
+      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("recommendation_events")
+        .select("event_type")
+        .eq("user_id", user.id)
+        .gte("created_at", thirtyDaysAgoIso)
+        .limit(2000);
+
+      const counts: RecommendationStats = {
+        searchQueries: 0,
+        resultClicks: 0,
+        watchStarts: 0,
+        watchCompletions: 0,
+      };
+
+      (data ?? []).forEach((event: any) => {
+        if (event.event_type === "search_query") counts.searchQueries += 1;
+        if (event.event_type === "search_result_click") counts.resultClicks += 1;
+        if (event.event_type === "watch_start") counts.watchStarts += 1;
+        if (event.event_type === "watch_complete") counts.watchCompletions += 1;
+      });
+
+      setRecommendationStats(counts);
+    };
+
+    fetchRecommendationStats();
   }, [user]);
 
   const handleDelete = async (table: "videos" | "audio_tracks" | "blog_posts", id: string) => {
@@ -184,6 +228,12 @@ const Dashboard = () => {
   const isEligible = profile?.is_monetized || (subscriberProgress >= 100 && watchHoursProgress >= 100);
   const totalViews = videos.reduce((s, v) => s + v.views, 0);
   const totalStreams = audios.reduce((s, a) => s + a.streams, 0);
+  const clickRate = recommendationStats.searchQueries > 0
+    ? Math.round((recommendationStats.resultClicks / recommendationStats.searchQueries) * 100)
+    : 0;
+  const completionRate = recommendationStats.watchStarts > 0
+    ? Math.round((recommendationStats.watchCompletions / recommendationStats.watchStarts) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,6 +276,31 @@ const Dashboard = () => {
             <StatCard icon={<Eye size={18} />} label="Total Views" value={totalViews} />
             <StatCard icon={<BarChart3 size={18} />} label="Total Streams" value={totalStreams} />
           </div>
+
+          <Card className="mb-8 bg-card border-border">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 size={18} className="text-primary" />
+                <h2 className="font-display font-semibold text-foreground">Recommendation Activity (30d)</h2>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <MiniStat label="Searches" value={recommendationStats.searchQueries} />
+                <MiniStat label="Result Clicks" value={recommendationStats.resultClicks} />
+                <MiniStat label="Watch Starts" value={recommendationStats.watchStarts} />
+                <MiniStat label="Completions" value={recommendationStats.watchCompletions} />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Search → Click rate</p>
+                  <p className="font-display text-xl font-bold text-foreground">{clickRate}%</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Start → Completion rate</p>
+                  <p className="font-display text-xl font-bold text-foreground">{completionRate}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Monetization card */}
           <Card className="mb-8 bg-card border-border overflow-hidden">
@@ -440,6 +515,15 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         <p className="font-display text-xl font-bold text-foreground">{value.toLocaleString()}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-display text-lg font-bold text-foreground">{value.toLocaleString()}</p>
+    </div>
   );
 }
 
