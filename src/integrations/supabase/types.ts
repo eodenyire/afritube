@@ -324,6 +324,41 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_events: {
+        Row: {
+          context: Json
+          created_at: string
+          event_type: Database["public"]["Enums"]["recommendation_event_type"]
+          id: string
+          user_id: string
+          video_id: string | null
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          event_type: Database["public"]["Enums"]["recommendation_event_type"]
+          id?: string
+          user_id: string
+          video_id?: string | null
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["recommendation_event_type"]
+          id?: string
+          user_id?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -562,6 +597,11 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
       payout_status: "pending" | "approved" | "paid" | "rejected"
+      recommendation_event_type:
+        | "search_query"
+        | "search_result_click"
+        | "watch_start"
+        | "watch_complete"
       video_processing_status: "processing" | "ready" | "failed"
       video_visibility: "public" | "unlisted" | "private"
     }
@@ -694,6 +734,12 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       playlist_type: ["album", "ep", "compilation", "custom", "watch_later"],
       payout_status: ["pending", "approved", "paid", "rejected"],
+      recommendation_event_type: [
+        "search_query",
+        "search_result_click",
+        "watch_start",
+        "watch_complete",
+      ],
       video_processing_status: ["processing", "ready", "failed"],
       video_visibility: ["public", "unlisted", "private"],
     },

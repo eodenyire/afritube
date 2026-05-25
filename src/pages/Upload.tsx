@@ -281,6 +281,28 @@ function VideoUploadForm({ userId }: { userId: string }) {
       el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
     });
 
+  const MAX_UPLOAD_RETRIES = 2;
+  const RETRY_BASE_DELAY_MS = 700;
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const withRetry = async <T,>(taskName: string, operation: () => Promise<T>) => {
+    let attempt = 0;
+    while (attempt <= MAX_UPLOAD_RETRIES) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt >= MAX_UPLOAD_RETRIES) throw error;
+        const delayMs = RETRY_BASE_DELAY_MS * 2 ** attempt;
+        console.warn(`${taskName} failed (attempt ${attempt + 1}); retrying in ${delayMs}ms`, error);
+        setUploadStage(`${taskName} failed, retrying...`);
+        await wait(delayMs);
+        attempt += 1;
+      }
+    }
+    throw new Error(`${taskName} failed after retries`);
+  };
+
   const handleSubmit = async ({ saveAsDraft = false }: { saveAsDraft?: boolean } = {}) => {
     if (!videoFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and video file are required.", variant: "destructive" });
@@ -319,7 +341,9 @@ function VideoUploadForm({ userId }: { userId: string }) {
 
       const videoPath = `${userId}/${Date.now()}-${videoFile.name}`;
       console.log("Uploading video to:", videoPath);
-      const { error: vErr } = await supabase.storage.from("videos").upload(videoPath, videoFile);
+      const { error: vErr } = await withRetry("Video upload", () =>
+        supabase.storage.from("videos").upload(videoPath, videoFile),
+      );
       if (vErr) throw new Error(`Video upload failed: ${vErr.message}`);
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
       console.log("Video uploaded successfully:", videoUrl);
@@ -339,7 +363,9 @@ function VideoUploadForm({ userId }: { userId: string }) {
         setUploadStage("Uploading thumbnail");
         console.log("Uploading thumbnail:", { name: finalThumbFile.name, size: finalThumbFile.size });
         const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
-        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
+        const { error: tErr } = await withRetry("Thumbnail upload", () =>
+          supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile),
+        );
         if (tErr) throw new Error(`Thumbnail upload failed: ${tErr.message}`);
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
         console.log("Thumbnail uploaded successfully:", thumbnailUrl);
@@ -355,9 +381,11 @@ function VideoUploadForm({ userId }: { userId: string }) {
           setUploadStage("Uploading subtitles");
           const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
           console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
-          const { error: sErr } = await supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
-            contentType: "application/x-subrip",
-          });
+          const { error: sErr } = await withRetry("Subtitle upload", () =>
+            supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
+              contentType: "application/x-subrip",
+            }),
+          );
           if (sErr) throw new Error(sErr.message);
           subtitleUrl = supabase.storage.from("subtitles").getPublicUrl(subtitlePath).data.publicUrl;
           console.log("Subtitles uploaded successfully:", subtitleUrl);

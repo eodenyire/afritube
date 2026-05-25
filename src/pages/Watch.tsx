@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { backfillVideoThumbnail } from "@/lib/videoThumbnail";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { logRecommendationEvent } from "@/lib/recommendationEvents";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import { Eye, Clock, Share2, User, ChevronDown, ChevronUp, BadgeCheck } from "lucide-react";
@@ -61,6 +62,8 @@ const Watch = () => {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [subtitleTrackUrl, setSubtitleTrackUrl] = useState<string | null>(null);
   const adLoggedForVideoRef = useRef<string | null>(null);
+  const watchStartLoggedForVideoRef = useRef<string | null>(null);
+  const watchCompleteLoggedForVideoRef = useRef<string | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
   const buildWatchHref = useCallback((videoId: string, context?: PlaylistContext | null) => {
     if (!context) return `/watch/${videoId}`;
@@ -279,6 +282,45 @@ const Watch = () => {
     videoElement.addEventListener("ended", handler);
     return () => videoElement.removeEventListener("ended", handler);
   }, [videoElement, playlistCtx, navigate, buildWatchHref]);
+
+  useEffect(() => {
+    if (!videoElement || !video) return;
+
+    const onPlay = () => {
+      if (watchStartLoggedForVideoRef.current === video.id) return;
+      watchStartLoggedForVideoRef.current = video.id;
+      logRecommendationEvent("watch_start", {
+        userId: user?.id,
+        videoId: video.id,
+        context: {
+          list_id: listId,
+          has_playlist_context: !!playlistCtx,
+          category: video.category,
+        },
+      }).then();
+    };
+
+    const onEnded = () => {
+      if (watchCompleteLoggedForVideoRef.current === video.id) return;
+      watchCompleteLoggedForVideoRef.current = video.id;
+      logRecommendationEvent("watch_complete", {
+        userId: user?.id,
+        videoId: video.id,
+        context: {
+          list_id: listId,
+          duration: video.duration,
+          category: video.category,
+        },
+      }).then();
+    };
+
+    videoElement.addEventListener("play", onPlay);
+    videoElement.addEventListener("ended", onEnded);
+    return () => {
+      videoElement.removeEventListener("play", onPlay);
+      videoElement.removeEventListener("ended", onEnded);
+    };
+  }, [videoElement, video, user?.id, listId, playlistCtx]);
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "0:00";

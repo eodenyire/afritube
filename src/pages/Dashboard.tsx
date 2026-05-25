@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Video, Music, BookOpen, Eye, Users, Clock, TrendingUp,
+  Video, Music, BookOpen, Eye, Users, Clock,
   DollarSign, Edit2, Upload, BarChart3, Loader2, Trash2, ListVideo
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +27,7 @@ interface VideoItem {
   views: number;
   category: string;
   created_at: string;
+  description: string | null;
   visibility: "public" | "unlisted" | "private";
   publish_at: string | null;
   processing_status: "processing" | "ready" | "failed" | null;
@@ -53,6 +59,8 @@ const fadeUp = {
   transition: { duration: 0.5 },
 };
 
+const videoCategories = ["General", "Music", "Comedy", "Tech", "Food", "Travel", "Education", "Sports", "Fashion", "Documentary"];
+
 const Dashboard = () => {
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -61,6 +69,13 @@ const Dashboard = () => {
   const [audios, setAudios] = useState<AudioItem[]>([]);
   const [blogs, setBlogs] = useState<BlogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingVideo, setEditingVideo] = useState<VideoItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("General");
+  const [editVisibility, setEditVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [editPublishAt, setEditPublishAt] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,7 +88,7 @@ const Dashboard = () => {
     const fetchContent = async () => {
       setLoading(true);
       const [vRes, aRes, bRes] = await Promise.all([
-        supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at, visibility, publish_at, processing_status").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("videos").select("id, title, thumbnail_url, views, category, created_at, description, visibility, publish_at, processing_status").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("audio_tracks").select("id, title, artist_name, cover_url, streams, genre, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("blog_posts").select("id, title, cover_url, likes, comments_count, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
@@ -95,6 +110,65 @@ const Dashboard = () => {
     else if (table === "audio_tracks") setAudios(prev => prev.filter(a => a.id !== id));
     else setBlogs(prev => prev.filter(b => b.id !== id));
     toast({ title: "Deleted successfully" });
+  };
+
+  const toLocalDatetimeInput = (iso: string | null) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const openEditVideo = (video: VideoItem) => {
+    setEditingVideo(video);
+    setEditTitle(video.title);
+    setEditDescription(video.description ?? "");
+    setEditCategory(video.category || "General");
+    setEditVisibility(video.visibility);
+    setEditPublishAt(toLocalDatetimeInput(video.publish_at));
+  };
+
+  const closeEditDialog = () => {
+    if (savingEdit) return;
+    setEditingVideo(null);
+  };
+
+  const handleSaveVideoEdit = async () => {
+    if (!user || !editingVideo) return;
+    if (!editTitle.trim()) {
+      toast({ title: "Title is required", variant: "destructive" });
+      return;
+    }
+    if (editPublishAt && Number.isNaN(new Date(editPublishAt).getTime())) {
+      toast({ title: "Invalid schedule time", description: "Please choose a valid date/time.", variant: "destructive" });
+      return;
+    }
+
+    setSavingEdit(true);
+    const payload = {
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+      category: editCategory || "General",
+      visibility: editVisibility,
+      publish_at: editPublishAt ? new Date(editPublishAt).toISOString() : null,
+    };
+    const { error } = await supabase
+      .from("videos")
+      .update(payload)
+      .eq("id", editingVideo.id)
+      .eq("user_id", user.id);
+    setSavingEdit(false);
+
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setVideos((prev) =>
+      prev.map((video) => (video.id === editingVideo.id ? { ...video, ...payload } : video)),
+    );
+    toast({ title: "Video updated" });
+    setEditingVideo(null);
   };
 
   if (authLoading || !user) {
@@ -252,6 +326,7 @@ const Dashboard = () => {
                       meta={`${v.views.toLocaleString()} views · ${v.category}`}
                       date={v.created_at}
                       status={getVideoStatus(v)}
+                      onEdit={() => openEditVideo(v)}
                       onDelete={() => handleDelete("videos", v.id)}
                     />
                   ))}
@@ -297,6 +372,62 @@ const Dashboard = () => {
           </Tabs>
         </motion.div>
       </div>
+      <Dialog open={!!editingVideo} onOpenChange={(nextOpen) => { if (!nextOpen) closeEditDialog(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit video</DialogTitle>
+            <DialogDescription>Update metadata and publishing settings for this video.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-video-title">Title</Label>
+              <Input id="edit-video-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label htmlFor="edit-video-description">Description</Label>
+              <Textarea id="edit-video-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1.5" rows={4} />
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={editCategory} onValueChange={setEditCategory}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {videoCategories.map((category) => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Visibility</Label>
+              <Select value={editVisibility} onValueChange={(value: "public" | "unlisted" | "private") => setEditVisibility(value)}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-video-publish-at">Schedule publish (optional)</Label>
+              <Input
+                id="edit-video-publish-at"
+                type="datetime-local"
+                value={editPublishAt}
+                onChange={(e) => setEditPublishAt(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog} disabled={savingEdit}>Cancel</Button>
+            <Button onClick={handleSaveVideoEdit} disabled={savingEdit} className="bg-gradient-gold text-primary-foreground hover:opacity-90">
+              {savingEdit ? <><Loader2 size={14} className="animate-spin mr-1.5" /> Saving...</> : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -312,12 +443,13 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function ContentRow({ image, title, meta, date, status, onDelete }: {
+function ContentRow({ image, title, meta, date, status, onEdit, onDelete }: {
   image: string | null;
   title: string;
   meta: string;
   date: string;
   status?: "draft" | "scheduled" | "processing" | "failed" | "live";
+  onEdit?: () => void;
   onDelete: () => void;
 }) {
   const statusClass: Record<NonNullable<typeof status>, string> = {
@@ -348,6 +480,11 @@ function ContentRow({ image, title, meta, date, status, onDelete }: {
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <span className="text-xs text-muted-foreground hidden sm:block">{new Date(date).toLocaleDateString()}</span>
+        {onEdit && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onEdit}>
+            <Edit2 size={14} />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
           <Trash2 size={14} />
         </Button>
