@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, ListVideo } from "lucide-react";
@@ -97,48 +97,80 @@ const Index = () => {
   const [dbPlaylists, setDbPlaylists] = useState<any[]>([]);
   const [activeVideoCategory, setActiveVideoCategory] = useState("Trending");
   const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const [videoPage, setVideoPage] = useState(0);
+  const [hasMoreVideos, setHasMoreVideos] = useState(true);
+  const [loadingMoreVideos, setLoadingMoreVideos] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const { mixVideos, loading: mixLoading } = useMix(user?.id, 20);
   const { recommendedVideos, loading: recommendationsLoading } = useRecommendations(user?.id, 20);
   const getMonetizedStatus = (value?: boolean) => isAdmin && !!value;
 
+  const VIDEOS_PAGE_SIZE = 12;
+
+  const fetchProfilesFor = useCallback(async (userIds: string[]) => {
+    if (userIds.length === 0) return;
+    const profileSelect = isAdmin
+      ? "user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours"
+      : "user_id, display_name, avatar_url";
+    const { data: profs } = await (supabase.from("profiles") as any)
+      .select(profileSelect)
+      .in("user_id", userIds);
+    const list = (profs ?? []) as any[];
+    setProfiles((prev) => {
+      const next = { ...prev };
+      list.forEach((p) => { next[p.user_id] = p; });
+      return next;
+    });
+    if (list.length > 0) {
+      setDbCreators((prev) => {
+        const seen = new Set(prev.map((c: any) => c.user_id));
+        const merged = [...prev];
+        list.forEach((p) => { if (!seen.has(p.user_id)) merged.push(p); });
+        return merged;
+      });
+    }
+  }, [isAdmin]);
+
+  const loadVideosPage = useCallback(async (page: number) => {
+    const nowIso = new Date().toISOString();
+    const from = page * VIDEOS_PAGE_SIZE;
+    const to = from + VIDEOS_PAGE_SIZE - 1;
+    const { data } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("visibility", "public")
+      .eq("processing_status", "ready")
+      .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    const rows = data ?? [];
+    return rows;
+  }, []);
+
   useEffect(() => {
     const fetchAll = async () => {
-      const nowIso = new Date().toISOString();
-      const [videosRes, audiosRes, blogsRes, playlistsRes] = await Promise.all([
-        supabase.from("videos").select("*").eq("visibility", "public").eq("processing_status", "ready").or(`publish_at.is.null,publish_at.lte.${nowIso}`).order("created_at", { ascending: false }).limit(20),
+      const [videos, audiosRes, blogsRes, playlistsRes] = await Promise.all([
+        loadVideosPage(0),
         supabase.from("audio_tracks").select("*").eq("is_published", true).order("streams", { ascending: false }).limit(6),
         supabase.from("blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }).limit(4),
         supabase.from("playlists").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(6),
       ]);
 
-      const videos = videosRes.data ?? [];
       const audios = audiosRes.data ?? [];
       const blogs = blogsRes.data ?? [];
       const playlists = playlistsRes.data ?? [];
 
-      // Collect all unique user_ids from content
       const userIds = new Set<string>();
-      videos.forEach((v) => userIds.add(v.user_id));
-      audios.forEach((a) => userIds.add(a.user_id));
-      blogs.forEach((b) => userIds.add(b.user_id));
-      playlists.forEach((p) => userIds.add(p.user_id));
+      videos.forEach((v: any) => userIds.add(v.user_id));
+      audios.forEach((a: any) => userIds.add(a.user_id));
+      blogs.forEach((b: any) => userIds.add(b.user_id));
+      playlists.forEach((p: any) => userIds.add(p.user_id));
 
-      if (userIds.size > 0) {
-        const profileSelect = isAdmin
-          ? "user_id, display_name, avatar_url, is_monetized, subscriber_count, watch_hours"
-          : "user_id, display_name, avatar_url";
-        const { data: profs } = await (supabase
-          .from("profiles") as any)
-          .select(profileSelect)
-          .in("user_id", Array.from(userIds));
-        const map: Record<string, any> = {};
-        ((profs ?? []) as any[]).forEach((p) => { map[p.user_id] = p; });
-        setProfiles(map);
-        // Use these profiles as creators
-        setDbCreators((profs ?? []) as any[]);
-      }
+      await fetchProfilesFor(Array.from(userIds));
 
       setDbVideos(videos);
+      setHasMoreVideos(videos.length === VIDEOS_PAGE_SIZE);
+      setVideoPage(0);
       setDbAudios(audios);
       setDbBlogs(blogs);
       if (playlists.length > 0) {
@@ -159,7 +191,37 @@ const Index = () => {
     };
 
     fetchAll();
-  }, [isAdmin]);
+  }, [isAdmin, loadVideosPage, fetchProfilesFor]);
+
+  const loadMoreVideos = useCallback(async () => {
+    if (loadingMoreVideos || !hasMoreVideos || loading) return;
+    setLoadingMoreVideos(true);
+    const nextPage = videoPage + 1;
+    const rows = await loadVideosPage(nextPage);
+    if (rows.length > 0) {
+      const knownIds = new Set(Object.keys(profiles));
+      const newUserIds = Array.from(new Set(rows.map((r: any) => r.user_id).filter((id: string) => !knownIds.has(id))));
+      if (newUserIds.length > 0) await fetchProfilesFor(newUserIds);
+      setDbVideos((prev) => {
+        const seen = new Set(prev.map((v: any) => v.id));
+        return [...prev, ...rows.filter((r: any) => !seen.has(r.id))];
+      });
+      setVideoPage(nextPage);
+    }
+    if (rows.length < VIDEOS_PAGE_SIZE) setHasMoreVideos(false);
+    setLoadingMoreVideos(false);
+  }, [loadingMoreVideos, hasMoreVideos, loading, videoPage, loadVideosPage, profiles, fetchProfilesFor]);
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMoreVideos();
+    }, { rootMargin: "600px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadMoreVideos]);
 
   // Map DB videos to VideoCard props — filter by active category
   const allVideoCards = dbVideos.length > 0
@@ -191,11 +253,13 @@ const Index = () => {
     category: video.category ?? "General",
   }));
 
+  const usingRecommendedFeed = activeVideoCategory === "Trending" && recommendedVideoCards.length > 0;
   const videoCards = activeVideoCategory === "Trending"
-    ? (recommendedVideoCards.length > 0
-        ? recommendedVideoCards.slice(0, 8)
-        : [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8))
-    : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
+    ? (usingRecommendedFeed
+        ? recommendedVideoCards
+        : [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)))
+    : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase());
+  const showInfiniteScroll = !usingRecommendedFeed && dbVideos.length > 0;
 
   const audioCards = dbAudios.length > 0
     ? dbAudios.map((a) => ({
@@ -348,11 +412,33 @@ const Index = () => {
               No videos in the "{activeVideoCategory}" category yet.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-              {videoCards.map((v) => (
-                <VideoCard key={v.title} {...v} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+                {videoCards.map((v: any, i: number) => (
+                  <VideoCard key={v.id ?? `${v.title}-${i}`} {...v} />
+                ))}
+              </div>
+              {showInfiniteScroll && (
+                <>
+                  {loadingMoreVideos && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="space-y-3">
+                          <Skeleton className="aspect-video rounded-xl" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {hasMoreVideos ? (
+                    <div ref={sentinelRef} className="h-10 mt-6" aria-hidden />
+                  ) : (
+                    <div className="text-center py-8 text-xs text-muted-foreground">You're all caught up.</div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </motion.section>
 
