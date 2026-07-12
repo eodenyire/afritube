@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, Zap } from "lucide-react";
 import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, ListVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -305,6 +306,18 @@ const Index = () => {
   const mixVideoIds = mixVideos.map((video) => video.id).join(",");
   const mixStartHref = mixVideos[0] ? `/watch/${mixVideos[0].id}?list=mix&videos=${encodeURIComponent(mixVideoIds)}` : null;
 
+  const shortCards = dbVideos
+    .filter((v) => v.duration !== null && v.duration <= 60)
+    .map((v) => {
+      const p = profiles[v.user_id];
+      return {
+        id: v.id,
+        title: v.title,
+        views: formatViews(v.views),
+        thumbnail: v.thumbnail_url ?? null,
+      };
+    });
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -471,6 +484,38 @@ const Index = () => {
             </div>
           )}
         </motion.section>
+
+        {/* Shorts */}
+        {!loading && shortCards.length > 0 && (
+          <motion.section {...fadeUp}>
+            <SectionHeader icon={<Zap size={22} />} title="Shorts" subtitle="Quick clips under 60 seconds" />
+            <div className="flex gap-4 overflow-x-auto pb-4 mt-4" style={{ scrollbarWidth: "none" }}>
+              {shortCards.map((s) => (
+                <div
+                  key={s.id}
+                  className="shrink-0 w-40 cursor-pointer group"
+                  onClick={() => navigate(`/watch/${s.id}`)}
+                >
+                  <div className="aspect-[9/16] rounded-xl overflow-hidden bg-secondary relative mb-2">
+                    {s.thumbnail ? (
+                      <img
+                        src={s.thumbnail}
+                        alt={s.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Zap size={28} className="text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium text-foreground line-clamp-2">{s.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.views} views</p>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+        )}
 
         {/* Audio */}
         <motion.section {...fadeUp} id="music">
