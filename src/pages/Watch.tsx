@@ -118,7 +118,7 @@ const Watch = () => {
         return;
       }
       setUnavailableReason(null);
-      setVideo(vid);
+      setVideo(vid as any);
 
       // Increment view count (fire-and-forget)
       supabase
