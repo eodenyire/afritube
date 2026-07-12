@@ -20,6 +20,7 @@ import Creators from "./pages/Creators.tsx";
 import Advertise from "./pages/Advertise.tsx";
 import Terms from "./pages/Terms.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import Subscriptions from "./pages/Subscriptions.tsx";
 import Playlist from "./pages/Playlist.tsx";
 import Playlists from "./pages/Playlists.tsx";
 import BrowsePlaylists from "./pages/BrowsePlaylists.tsx";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/advertise" element={<Advertise />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/subscriptions" element={<Subscriptions />} />
              <Route path="/playlists" element={<Playlists />} />
              <Route path="/playlist/:id" element={<Playlist />} />
              <Route path="/browse-playlists" element={<BrowsePlaylists />} />

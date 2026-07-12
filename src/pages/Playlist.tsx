@@ -168,7 +168,10 @@ const Playlist = () => {
             .select("id, title, thumbnail_url, views, duration, category, user_id")
             .in("id", videoIds);
           if (!ownsPlaylist) {
-            playlistVideosQuery.eq("visibility", "public").or(`publish_at.is.null,publish_at.lte.${nowIso}`);
+            playlistVideosQuery
+              .eq("visibility", "public")
+              .eq("processing_status", "ready")
+              .or(`publish_at.is.null,publish_at.lte.${nowIso}`);
           }
           const { data: videosData } = await playlistVideosQuery;
 
