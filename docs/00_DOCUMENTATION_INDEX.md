@@ -35,6 +35,7 @@ Documents are organized **chronologically from concept → design → implementa
 | 10 | `/docs/10_PROGRESS_REPORT.md` | Current Progress Report – what's done, in progress, not started, known issues |
 | 11 | `/docs/11_QUICKSTART.md` | Quick Start Guide – get running locally in under 10 minutes |
 | 12 | `/docs/12_DEPLOYMENT.md` | Deployment Guide – Vercel, Docker, Kubernetes, environment variables |
+| 13 | `/docs/13_YOUTUBE_COMPETITOR_MASTER_PLAN.md` | YouTube-Competitor Master Plan – full workstream roadmap for platform, AI, monetization, rights, and Africa-first expansion |
 
 ---
 
@@ -63,4 +64,3 @@ Documents are organized **chronologically from concept → design → implementa
 This **Documentation Index** gives AfriTube a **single-source-of-truth**, making it easy to manage, track, and scale the project.
 
 ---
-

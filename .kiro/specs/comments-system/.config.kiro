@@ -1,0 +1,13 @@
+{
+  "specName": "comments-system",
+  "specType": "feature",
+  "workflowType": "requirements-first",
+  "status": "in_progress",
+  "createdAt": "2026-05-25",
+  "priority": "HIGH",
+  "effort": "MEDIUM",
+  "timeline": "2 weeks",
+  "team": ["backend", "frontend", "qa"],
+  "dependencies": ["supabase", "react", "react-query"],
+  "relatedFeatures": ["notifications", "moderation", "analytics"]
+}

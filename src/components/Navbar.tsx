@@ -1,21 +1,59 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Upload, Bell, Menu, X, User, LogOut, Shield } from "lucide-react";
+import { useState } from "react";
+import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
   const { user, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) { setNotifCount(0); return; }
+    const fetchNotifCount = async () => {
+      const lastSeen = localStorage.getItem("afritube_notif_seen");
+      const since = lastSeen
+        ? new Date(lastSeen).toISOString()
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: subs } = await supabase
+        .from("subscriptions")
+        .select("creator_id")
+        .eq("subscriber_id", user.id);
+
+      const creatorIds = (subs ?? []).map((s: any) => s.creator_id);
+      if (creatorIds.length === 0) return;
+
+      const { count } = await supabase
+        .from("videos")
+        .select("*", { count: "exact", head: true })
+        .in("user_id", creatorIds)
+        .eq("is_published", true)
+        .gt("created_at", since);
+
+      setNotifCount(count ?? 0);
+    };
+    fetchNotifCount();
+  }, [user]);
+
+  const handleNotificationClick = () => {
+    navigate("/subscriptions");
+    setNotifCount(0);
+  };
 
   const navLinks = [
     { label: "Videos", href: "/#videos" },
     { label: "Music", href: "/#music" },
     { label: "Blogs", href: "/#blogs" },
     { label: "Creators", href: "/#creators" },
+    ...(user ? [{ label: "Subscriptions", href: "/subscriptions" }] : []),
   ];
 
   return (
@@ -75,8 +113,19 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/upload")}>
             <Upload size={20} />
           </Button>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
+          {user && (
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/history")}>
+              <HistoryIcon size={20} />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
             <Bell size={20} />
+            {user && notifCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
           </Button>
 
           {user ? (
@@ -153,6 +202,15 @@ const Navbar = () => {
                 </button>
               )}
               <div className="pt-2">
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => { setMobileOpen(false); navigate("/history"); }}
+                    className="block w-full text-left px-3 py-2 mb-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                  >
+                    Watch History
+                  </button>
+                )}
                 <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("mq") as HTMLInputElement).value; if (q.trim()) { setMobileOpen(false); navigate(`/search?q=${encodeURIComponent(q.trim())}`); } }} className="flex items-center rounded-full border border-border bg-secondary">
                   <input
                     name="mq"
