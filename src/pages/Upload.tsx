@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Video, Music, BookOpen, ImagePlus, X, Loader2 } from "lucide-react";
+import { Upload as UploadIcon, Video, Music, BookOpen, ImagePlus, FileText, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,13 +131,18 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [uploading, setUploading] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [subtitleFile, setSubtitleFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
+  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [publishAt, setPublishAt] = useState("");
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistTarget, setPlaylistTarget] = useState<string>("none");
   const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
   const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState("Waiting to upload");
   const MAX_THUMBNAIL_SEEK_TIME_SECONDS = 1;
   const THUMBNAIL_JPEG_QUALITY = 0.85;
   const THUMBNAIL_TIMEOUT_MS = 8000;
@@ -275,7 +281,29 @@ function VideoUploadForm({ userId }: { userId: string }) {
       el.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
     });
 
-  const handleSubmit = async () => {
+  const MAX_UPLOAD_RETRIES = 2;
+  const RETRY_BASE_DELAY_MS = 700;
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const withRetry = async <T,>(taskName: string, operation: () => Promise<T>) => {
+    let attempt = 0;
+    while (attempt <= MAX_UPLOAD_RETRIES) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt >= MAX_UPLOAD_RETRIES) throw error;
+        const delayMs = RETRY_BASE_DELAY_MS * 2 ** attempt;
+        console.warn(`${taskName} failed (attempt ${attempt + 1}); retrying in ${delayMs}ms`, error);
+        setUploadStage(`${taskName} failed, retrying...`);
+        await wait(delayMs);
+        attempt += 1;
+      }
+    }
+    throw new Error(`${taskName} failed after retries`);
+  };
+
+  const handleSubmit = async ({ saveAsDraft = false }: { saveAsDraft?: boolean } = {}) => {
     if (!videoFile || !title.trim()) {
       toast({ title: "Missing fields", description: "Title and video file are required.", variant: "destructive" });
       return;
@@ -288,20 +316,41 @@ function VideoUploadForm({ userId }: { userId: string }) {
       });
       return;
     }
+
+    if (publishAt && Number.isNaN(new Date(publishAt).getTime())) {
+      toast({
+        title: "Invalid publish date",
+        description: "Please select a valid schedule date and time.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalVisibility: "public" | "unlisted" | "private" = saveAsDraft ? "private" : visibility;
+    const finalPublishAt = saveAsDraft ? null : (publishAt ? new Date(publishAt).toISOString() : null);
+
     setUploading(true);
+    setUploadProgress(5);
+    setUploadStage(saveAsDraft ? "Saving draft metadata" : "Preparing upload");
     try {
       console.log("Starting video upload:", { fileName: videoFile.name, size: videoFile.size });
       const duration = await getFileDuration(videoFile, "video");
       console.log("Video duration:", duration);
+      setUploadProgress(12);
+      setUploadStage("Uploading video");
 
       const videoPath = `${userId}/${Date.now()}-${videoFile.name}`;
       console.log("Uploading video to:", videoPath);
-      const { error: vErr } = await supabase.storage.from("videos").upload(videoPath, videoFile);
+      const { error: vErr } = await withRetry("Video upload", () =>
+        supabase.storage.from("videos").upload(videoPath, videoFile),
+      );
       if (vErr) throw new Error(`Video upload failed: ${vErr.message}`);
       const videoUrl = supabase.storage.from("videos").getPublicUrl(videoPath).data.publicUrl;
       console.log("Video uploaded successfully:", videoUrl);
+      setUploadProgress(58);
 
       let thumbnailUrl: string | null = null;
+      setUploadStage("Generating thumbnail");
       console.log("Generating thumbnail...");
       const finalThumbFile = thumbFile ?? await createVideoThumbnail(videoFile);
       if (!finalThumbFile) {
@@ -311,16 +360,62 @@ function VideoUploadForm({ userId }: { userId: string }) {
           description: "We couldn't auto-generate a thumbnail. You can upload one later.",
         });
       } else {
+        setUploadStage("Uploading thumbnail");
         console.log("Uploading thumbnail:", { name: finalThumbFile.name, size: finalThumbFile.size });
         const thumbPath = `${userId}/${Date.now()}-${finalThumbFile.name}`;
-        const { error: tErr } = await supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile);
+        const { error: tErr } = await withRetry("Thumbnail upload", () =>
+          supabase.storage.from("thumbnails").upload(thumbPath, finalThumbFile),
+        );
         if (tErr) throw new Error(`Thumbnail upload failed: ${tErr.message}`);
         thumbnailUrl = supabase.storage.from("thumbnails").getPublicUrl(thumbPath).data.publicUrl;
         console.log("Thumbnail uploaded successfully:", thumbnailUrl);
       }
+      setUploadProgress(74);
 
-      console.log("Saving video to database:", { title, thumbnailUrl });
-      const { data: createdVideo, error: dbErr } = await supabase.from("videos").insert({
+      let subtitleUrl: string | null = null;
+      if (subtitleFile) {
+        if (!subtitleFile.name.toLowerCase().endsWith(".srt")) {
+          throw new Error("Subtitle file must be an .srt file.");
+        }
+        try {
+          setUploadStage("Uploading subtitles");
+          const subtitlePath = `${userId}/${Date.now()}-${subtitleFile.name}`;
+          console.log("Uploading subtitles:", { name: subtitleFile.name, size: subtitleFile.size });
+          const { error: sErr } = await withRetry("Subtitle upload", () =>
+            supabase.storage.from("subtitles").upload(subtitlePath, subtitleFile, {
+              contentType: "application/x-subrip",
+            }),
+          );
+          if (sErr) throw new Error(sErr.message);
+          subtitleUrl = supabase.storage.from("subtitles").getPublicUrl(subtitlePath).data.publicUrl;
+          console.log("Subtitles uploaded successfully:", subtitleUrl);
+        } catch (subtitleError: any) {
+          subtitleUrl = null;
+          console.error("Subtitle upload error:", subtitleError);
+          toast({
+            title: "Subtitles skipped",
+            description: subtitleError?.message || "Subtitle upload failed, but your video will still be published.",
+            variant: "destructive",
+          });
+        }
+      }
+      setUploadProgress(86);
+      setUploadStage("Saving video metadata");
+
+      console.log("Saving video to database:", { title, thumbnailUrl, subtitleUrl });
+      const videoPayload: {
+        user_id: string;
+        title: string;
+        description: string | null;
+        video_url: string;
+        thumbnail_url: string | null;
+        category: string;
+        duration: number;
+        visibility: "public" | "unlisted" | "private";
+        publish_at: string | null;
+        processing_status?: "processing" | "ready" | "failed";
+        subtitle_url?: string | null;
+      } = {
         user_id: userId,
         title: title.trim(),
         description: description.trim() || null,
@@ -328,9 +423,48 @@ function VideoUploadForm({ userId }: { userId: string }) {
         thumbnail_url: thumbnailUrl,
         category,
         duration,
-      }).select("id").single();
+        visibility: finalVisibility,
+        publish_at: finalPublishAt,
+        processing_status: "processing",
+      };
+      if (subtitleUrl) {
+        videoPayload.subtitle_url = subtitleUrl;
+      }
+
+      let { data: createdVideo, error: dbErr } = await supabase.from("videos").insert(videoPayload).select("id").single();
+      if (dbErr?.message?.includes("subtitle_url")) {
+        const { subtitle_url, ...fallbackPayload } = videoPayload;
+        ({ data: createdVideo, error: dbErr } = await supabase.from("videos").insert(fallbackPayload).select("id").single());
+        if (!dbErr) {
+          toast({
+            title: "Video uploaded",
+            description: "Your video was published, but subtitle metadata could not be saved.",
+            variant: "destructive",
+          });
+        }
+      }
+      if (dbErr?.message?.includes("processing_status")) {
+        const { processing_status, ...fallbackPayload } = videoPayload;
+        ({ data: createdVideo, error: dbErr } = await supabase.from("videos").insert(fallbackPayload).select("id").single());
+      }
       if (dbErr) throw new Error(`Database insert failed: ${dbErr.message}`);
       console.log("Video saved to database successfully");
+      setUploadProgress(92);
+      setUploadStage("Finalizing processing");
+
+      if (createdVideo?.id) {
+        const { error: processingErr } = await supabase
+          .from("videos")
+          .update({ processing_status: "ready" })
+          .eq("id", createdVideo.id);
+        if (processingErr) {
+          await supabase
+            .from("videos")
+            .update({ processing_status: "failed" })
+            .eq("id", createdVideo.id);
+          throw new Error(`Video processing failed: ${processingErr.message}`);
+        }
+      }
 
       let targetPlaylistId: string | null = null;
       if (playlistTarget === "create_new") {
@@ -350,10 +484,18 @@ function VideoUploadForm({ userId }: { userId: string }) {
         }
       }
 
-      toast({ title: "Video uploaded! 🎬", description: "Your video is now live on AfriTube." });
+      setUploadProgress(100);
+      setUploadStage("Completed");
+      toast({
+        title: saveAsDraft ? "Draft saved" : "Video uploaded! 🎬",
+        description: saveAsDraft
+          ? "Your draft is private in your dashboard until you're ready to publish."
+          : "Your video is now live on AfriTube.",
+      });
       navigate("/");
     } catch (err: any) {
       console.error("Video upload error:", err);
+      setUploadStage("Failed");
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
@@ -364,6 +506,14 @@ function VideoUploadForm({ userId }: { userId: string }) {
     <div className="space-y-6 mt-6">
       <FileDropZone accept="video/*" label="Upload your video" icon={<Video size={32} />} file={videoFile} onFileSelect={setVideoFile} onClear={() => setVideoFile(null)} />
       <FileDropZone accept="image/*" label="Upload thumbnail (optional, auto-generated if omitted)" icon={<ImagePlus size={32} />} file={thumbFile} onFileSelect={setThumbFile} onClear={() => setThumbFile(null)} />
+      <FileDropZone
+        accept=".srt,text/plain,application/x-subrip"
+        label="Upload subtitles (.srt, optional)"
+        icon={<FileText size={32} />}
+        file={subtitleFile}
+        onFileSelect={setSubtitleFile}
+        onClear={() => setSubtitleFile(null)}
+      />
       <div className="space-y-4">
         <div>
           <Label htmlFor="v-title">Title</Label>
@@ -379,6 +529,30 @@ function VideoUploadForm({ userId }: { userId: string }) {
             <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
             <SelectContent>{videoCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
+        </div>
+        <div>
+          <Label>Visibility</Label>
+          <Select value={visibility} onValueChange={(value: "public" | "unlisted" | "private") => setVisibility(value)}>
+            <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="unlisted">Unlisted</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="publish-at">Schedule publish (optional)</Label>
+          <Input
+            id="publish-at"
+            type="datetime-local"
+            value={publishAt}
+            onChange={(e) => setPublishAt(e.target.value)}
+            className="mt-1.5"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Leave empty to publish immediately (if visibility is public/unlisted).
+          </p>
         </div>
         <div>
           <Label>Add to playlist (optional)</Label>
@@ -410,9 +584,28 @@ function VideoUploadForm({ userId }: { userId: string }) {
           </div>
         )}
       </div>
-      <Button onClick={handleSubmit} disabled={uploading} className="w-full bg-gradient-gold text-primary-foreground font-semibold rounded-full hover:opacity-90">
-        {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Uploading...</> : <><UploadIcon size={18} className="mr-2" /> Publish Video</>}
-      </Button>
+      {uploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{uploadStage}</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <Progress value={uploadProgress} className="h-2" />
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Button
+          variant="outline"
+          onClick={() => handleSubmit({ saveAsDraft: true })}
+          disabled={uploading}
+          className="w-full rounded-full"
+        >
+          {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Saving...</> : <>Save as Draft</>}
+        </Button>
+        <Button onClick={() => handleSubmit()} disabled={uploading} className="w-full bg-gradient-gold text-primary-foreground font-semibold rounded-full hover:opacity-90">
+          {uploading ? <><Loader2 size={18} className="animate-spin mr-2" /> Uploading...</> : <><UploadIcon size={18} className="mr-2" /> Publish Video</>}
+        </Button>
+      </div>
     </div>
   );
 }

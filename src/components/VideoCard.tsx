@@ -14,14 +14,20 @@ interface VideoCardProps {
   thumbnail: string | null;
   avatar: string;
   isMonetized?: boolean;
+  onOpen?: (videoId: string) => void;
 }
 
-const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isMonetized }: VideoCardProps) => {
+const VideoCard = ({ id, title, channel, views, duration, thumbnail, avatar, isMonetized, onOpen }: VideoCardProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
   const Wrapper = id ? Link : "div";
-  const wrapperProps = id ? { to: `/watch/${id}` } : {};
+  const wrapperProps = id
+    ? {
+        to: `/watch/${id}`,
+        onClick: () => onOpen?.(id),
+      }
+    : {};
   const showPlaceholder = !thumbnail || imgError;
 
   return (

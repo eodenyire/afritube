@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Play, Share2, Heart, Trash2, Plus, Loader2, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { Play, Share2, Heart, Trash2, Plus, Loader2, Search, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePlaylist, type PlaylistWithVideos } from "@/hooks/usePlaylist";
@@ -24,6 +24,15 @@ interface VideoWithDetails {
   };
 }
 
+interface PlaylistOwnerProfile {
+  display_name: string | null;
+}
+
+interface VideoProfileRow {
+  user_id: string;
+  display_name: string | null;
+}
+
 const Playlist = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -32,6 +41,7 @@ const Playlist = () => {
   const { fetchPlaylist, removeVideoFromPlaylist, deletePlaylist, addVideoToPlaylist } = usePlaylist();
 
   const [playlist, setPlaylist] = useState<PlaylistWithVideos | null>(null);
+  const [playlistOwner, setPlaylistOwner] = useState<PlaylistOwnerProfile | null>(null);
   const [videos, setVideos] = useState<VideoWithDetails[]>([]);
   const [availableVideos, setAvailableVideos] = useState<VideoWithDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,6 +49,10 @@ const Playlist = () => {
   const [isOwner, setIsOwner] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
   const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
+
+  // Drag-and-drop state
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const updatePlaylistItemsFromVideos = (nextVideos: VideoWithDetails[]) => {
     setPlaylist((prev) => {
@@ -93,6 +107,32 @@ const Playlist = () => {
 
     const load = async () => {
       setLoading(true);
+      setVideos([]);
+      setAvailableVideos([]);
+      setPlaylistOwner(null);
+
+      const attachVideoProfiles = async (videoRows: any[]): Promise<VideoWithDetails[]> => {
+        if (videoRows.length === 0) return [];
+
+        const creatorIds = Array.from(new Set(videoRows.map((video) => video.user_id).filter(Boolean)));
+        if (creatorIds.length === 0) return videoRows as VideoWithDetails[];
+
+        const { data: profileRows } = await (supabase
+          .from("profiles") as any)
+          .select("user_id, display_name")
+          .in("user_id", creatorIds);
+
+        const profileMap = new Map(
+          ((profileRows ?? []) as VideoProfileRow[]).map((profile) => [profile.user_id, profile.display_name])
+        );
+
+        return videoRows.map((video) => ({
+          ...video,
+          profiles: {
+            display_name: profileMap.get(video.user_id) ?? null,
+          },
+        })) as VideoWithDetails[];
+      };
 
       // Fetch playlist
       const playlistData = await fetchPlaylist(id);
@@ -106,33 +146,55 @@ const Playlist = () => {
       }
 
       setPlaylist(playlistData);
-      setIsOwner(user?.id === playlistData.user_id);
+      const ownsPlaylist = user?.id === playlistData.user_id;
+      setIsOwner(ownsPlaylist);
+
+      const { data: ownerProfile } = await (supabase
+        .from("profiles") as any)
+        .select("display_name")
+        .eq("user_id", playlistData.user_id)
+        .single();
+      setPlaylistOwner((ownerProfile as PlaylistOwnerProfile | null) ?? null);
 
       // Fetch videos in playlist
       if (playlistData.items.length > 0) {
-        const videoIds = playlistData.items.map((item) => item.video_id);
-        const { data: videosData } = await (supabase
-          .from("videos") as any)
-          .select("*, profiles(display_name)")
-          .in("id", videoIds);
+        const nowIso = new Date().toISOString();
+        const videoIds = playlistData.items
+          .map((item) => item.video_id)
+          .filter((videoId): videoId is string => Boolean(videoId));
+        if (videoIds.length > 0) {
+          const playlistVideosQuery = (supabase
+            .from("videos") as any)
+            .select("id, title, thumbnail_url, views, duration, category, user_id")
+            .in("id", videoIds);
+          if (!ownsPlaylist) {
+            playlistVideosQuery
+              .eq("visibility", "public")
+              .eq("processing_status", "ready")
+              .or(`publish_at.is.null,publish_at.lte.${nowIso}`);
+          }
+          const { data: videosData } = await playlistVideosQuery;
 
-        if (videosData) {
-          // Sort by playlist order
-          const orderedVideos = (playlistData.items
-            .map((item) => (videosData as any[]).find((v: any) => v.id === item.video_id))
-            .filter(Boolean)) as unknown as VideoWithDetails[];
-          setVideos(orderedVideos);
+          if (videosData) {
+            const playlistVideos = await attachVideoProfiles(videosData as any[]);
+            // Sort by playlist order
+            const orderedVideos = (playlistData.items
+              .map((item) => playlistVideos.find((video) => video.id === item.video_id))
+              .filter(Boolean)) as unknown as VideoWithDetails[];
+            setVideos(orderedVideos);
+          }
         }
       }
 
-      if (user?.id === playlistData.user_id) {
+      if (ownsPlaylist && user?.id) {
         const { data: ownVideos } = await (supabase
           .from("videos") as any)
-          .select("*, profiles(display_name)")
+          .select("id, title, thumbnail_url, views, duration, category, user_id")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
         const existingIds = new Set(playlistData.items.map((item) => item.video_id));
-        const selectableVideos = ((ownVideos ?? []) as any[]).filter((video: any) => !existingIds.has(video.id)) as VideoWithDetails[];
+        const selectableVideos = (await attachVideoProfiles((ownVideos ?? []) as any[]))
+          .filter((video) => !existingIds.has(video.id));
         setAvailableVideos(selectableVideos);
       }
 
@@ -191,6 +253,43 @@ const Playlist = () => {
       setVideos(previous);
       updatePlaylistItemsFromVideos(previous);
     }
+  };
+
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndexRef.current !== null && dragIndexRef.current !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = async (dropIndex: number) => {
+    const fromIndex = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+
+    if (fromIndex === null || fromIndex === dropIndex) return;
+
+    const previous = [...videos];
+    const reordered = [...videos];
+    const [dragged] = reordered.splice(fromIndex, 1);
+    reordered.splice(dropIndex, 0, dragged);
+
+    setVideos(reordered);
+    updatePlaylistItemsFromVideos(reordered);
+    const saved = await persistVideoOrder(reordered);
+    if (!saved) {
+      setVideos(previous);
+      updatePlaylistItemsFromVideos(previous);
+    }
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
   };
 
   const handleDeletePlaylist = async () => {
@@ -274,6 +373,11 @@ const Playlist = () => {
               <h1 className="font-display text-4xl font-bold text-foreground mb-2">
                 {playlist.title}
               </h1>
+              {playlistOwner?.display_name && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  by {playlistOwner.display_name}
+                </p>
+              )}
               {playlist.description && (
                 <p className="text-muted-foreground mb-4">{playlist.description}</p>
               )}
@@ -381,8 +485,25 @@ const Playlist = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className="flex gap-3 items-center group p-2 rounded-lg hover:bg-card transition-colors"
+                  draggable={isOwner}
+                  onDragStart={isOwner ? () => handleDragStart(index) : undefined}
+                  onDragOver={isOwner ? (e) => handleDragOver(e, index) : undefined}
+                  onDrop={isOwner ? () => handleDrop(index) : undefined}
+                  onDragEnd={isOwner ? handleDragEnd : undefined}
+                  className={`flex gap-3 items-center group p-2 rounded-lg transition-colors ${
+                    dragOverIndex === index
+                      ? "bg-primary/10 border-2 border-primary/40"
+                      : "hover:bg-card border-2 border-transparent"
+                  }`}
                 >
+                  {isOwner && (
+                    <div
+                      className="text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 px-0.5"
+                      aria-label="Drag to reorder"
+                    >
+                      <GripVertical size={16} />
+                    </div>
+                  )}
                   <div className="text-muted-foreground font-semibold w-8 text-right shrink-0">
                     {index + 1}
                   </div>

@@ -65,10 +65,19 @@ const SaveToPlaylistModal = ({ open, onOpenChange, videoId }: SaveToPlaylistModa
   }, [open]);
 
   const handleSave = async () => {
-    if (!user || !videoId) {
+    if (!user) {
       toast({
         title: "Sign in required",
         description: "Sign in to save videos to playlists.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!videoId) {
+      toast({
+        title: "Cannot save",
+        description: "This video cannot be saved to a playlist.",
         variant: "destructive",
       });
       return;

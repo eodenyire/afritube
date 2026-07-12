@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { backfillVideoThumbnail } from "@/lib/videoThumbnail";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { logRecommendationEvent } from "@/lib/recommendationEvents";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
-import { Eye, Clock, Share2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, Clock, Share2, User, Bookmark } from "lucide-react";
+import { Eye, Clock, Share2, User, ChevronDown, ChevronUp, BadgeCheck } from "lucide-react";
 import VideoReactions from "@/components/VideoReactions";
 import SubscribeButton from "@/components/SubscribeButton";
 import VideoComments from "@/components/VideoComments";
@@ -12,6 +14,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { useWatchTimeTracker } from "@/hooks/useWatchTimeTracker";
+import { usePlaylist } from "@/hooks/usePlaylist";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Video {
   id: string;
@@ -19,11 +30,13 @@ interface Video {
   description: string | null;
   video_url: string;
   thumbnail_url: string | null;
+  subtitle_url: string | null;
   views: number;
   duration: number | null;
   category: string | null;
   created_at: string;
   user_id: string;
+  processing_status: "processing" | "ready" | "failed" | null;
 }
 
 interface CreatorProfile {
@@ -31,6 +44,7 @@ interface CreatorProfile {
   avatar_url: string | null;
   subscriber_count?: number;
   is_monetized?: boolean;
+  is_creator?: boolean;
 }
 
 interface PlaylistContext {
@@ -40,6 +54,8 @@ interface PlaylistContext {
   currentIndex: number;
   extraQuery?: string;
 }
+
+const DESCRIPTION_TRUNCATE_LENGTH = 150;
 
 const Watch = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,8 +70,18 @@ const Watch = () => {
   const [playlistCtx, setPlaylistCtx] = useState<PlaylistContext | null>(null);
   const [showRelated, setShowRelated] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [subtitleTrackUrl, setSubtitleTrackUrl] = useState<string | null>(null);
+  const adLoggedForVideoRef = useRef<string | null>(null);
+  const watchStartLoggedForVideoRef = useRef<string | null>(null);
+  const watchCompleteLoggedForVideoRef = useRef<string | null>(null);
   const videoRef = useCallback((el: HTMLVideoElement | null) => setVideoElement(el), []);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [watchLaterSaved, setWatchLaterSaved] = useState(false);
+  const [watchLaterPlaylistId, setWatchLaterPlaylistId] = useState<string | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState("1");
+  const { createPlaylist, addVideoToPlaylist } = usePlaylist();
   const buildWatchHref = useCallback((videoId: string, context?: PlaylistContext | null) => {
     if (!context) return `/watch/${videoId}`;
     const suffix = context.extraQuery ? `&${context.extraQuery}` : "";
@@ -87,6 +113,10 @@ const Watch = () => {
 
     const load = async () => {
       setLoading(true);
+      setVideo(null);
+      setRelated([]);
+      setUnavailableReason(null);
+      const nowIso = new Date().toISOString();
 
       // Fetch video
       const { data: vid } = await supabase
@@ -99,7 +129,13 @@ const Watch = () => {
         setLoading(false);
         return;
       }
-      setVideo(vid);
+      if (vid.processing_status !== "ready" && !isAdmin && user?.id !== vid.user_id) {
+        setUnavailableReason("This video is still processing and will be available shortly.");
+        setLoading(false);
+        return;
+      }
+      setUnavailableReason(null);
+      setVideo(vid as any);
 
       // Increment view count (fire-and-forget)
       supabase
@@ -111,8 +147,8 @@ const Watch = () => {
       // Fetch creator profile
       const canViewEligibility = isAdmin || user?.id === vid.user_id;
       const profileSelect = canViewEligibility
-        ? "display_name, avatar_url, subscriber_count, is_monetized"
-        : "display_name, avatar_url";
+        ? "display_name, avatar_url, subscriber_count, is_monetized, is_creator"
+        : "display_name, avatar_url, is_monetized, is_creator";
       const { data: profile } = await (supabase
         .from("profiles") as any)
         .select(profileSelect)
@@ -125,16 +161,37 @@ const Watch = () => {
         .from("videos")
         .select("*")
         .neq("id", id)
-        .eq("is_published", true)
+        .eq("visibility", "public")
+        .eq("processing_status", "ready")
+        .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
         .order("views", { ascending: false })
         .limit(8);
-      setRelated(rel ?? []);
+      setRelated((rel ?? []) as any);
 
       setLoading(false);
     };
 
     load();
-  }, [id]);
+  }, [id, isAdmin, user?.id]);
+
+  useEffect(() => {
+    if (!video || !creator?.is_monetized) return;
+    if (user?.id === video.user_id) return;
+    if (adLoggedForVideoRef.current === video.id) return;
+    adLoggedForVideoRef.current = video.id;
+
+    (supabase as any).rpc("log_ad_impression", {
+      p_video_id: video.id,
+      p_creator_id: video.user_id,
+      p_viewer_id: user?.id ?? null,
+      p_ad_slot: "watch_preroll",
+      p_revenue_usd: 0.004,
+    }).then(({ error }) => {
+      if (error) {
+        console.warn("Failed to log ad impression:", error.message);
+      }
+    });
+  }, [video, creator?.is_monetized, user?.id]);
 
   // Load playlist context when ?list= is present
   useEffect(() => {
@@ -154,6 +211,7 @@ const Watch = () => {
         const { data: vids } = await supabase
           .from("videos")
           .select("id, title, thumbnail_url, duration")
+          .eq("processing_status", "ready")
           .in("id", dedupedIds);
         const byId = new Map(((vids ?? []) as any[]).map((video: any) => [video.id, video]));
         const ordered = dedupedIds.map((videoId) => byId.get(videoId)).filter(Boolean) as any[];
@@ -185,6 +243,7 @@ const Watch = () => {
       const { data: vids } = await supabase
         .from("videos")
         .select("id, title, thumbnail_url, duration")
+        .eq("processing_status", "ready")
         .in("id", videoIds);
       const ordered = videoIds
         .map((vid: string) => (vids ?? []).find((v: any) => v.id === vid))
@@ -198,6 +257,38 @@ const Watch = () => {
     setShowRelated(!playlistCtx);
   }, [playlistCtx]);
 
+  useEffect(() => {
+    let objectUrl: string | null = null;
+
+    const loadSubtitles = async () => {
+      if (!video?.subtitle_url) {
+        setSubtitleTrackUrl(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(video.subtitle_url);
+        if (!response.ok) throw new Error(`Failed to fetch subtitles: ${response.status}`);
+        const srtText = await response.text();
+        const vttText = `WEBVTT\n\n${srtText
+          .replace(/\r/g, "")
+          .replace(/--&gt;/g, "-->")
+          .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")}`;
+        objectUrl = URL.createObjectURL(new Blob([vttText], { type: "text/vtt" }));
+        setSubtitleTrackUrl(objectUrl);
+      } catch (error) {
+        console.warn("Subtitle processing failed:", error);
+        setSubtitleTrackUrl(video.subtitle_url);
+      }
+    };
+
+    loadSubtitles();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [video?.subtitle_url]);
+
   // Auto-advance to next video in playlist
   useEffect(() => {
     if (!videoElement || !playlistCtx) return;
@@ -208,6 +299,111 @@ const Watch = () => {
     videoElement.addEventListener("ended", handler);
     return () => videoElement.removeEventListener("ended", handler);
   }, [videoElement, playlistCtx, navigate, buildWatchHref]);
+
+  useEffect(() => {
+    if (!videoElement || !video) return;
+
+    const onPlay = () => {
+      if (watchStartLoggedForVideoRef.current === video.id) return;
+      watchStartLoggedForVideoRef.current = video.id;
+      logRecommendationEvent("watch_start", {
+        userId: user?.id,
+        videoId: video.id,
+        context: {
+          list_id: listId,
+          has_playlist_context: !!playlistCtx,
+          category: video.category,
+        },
+      }).then();
+    };
+
+    const onEnded = () => {
+      if (watchCompleteLoggedForVideoRef.current === video.id) return;
+      watchCompleteLoggedForVideoRef.current = video.id;
+      logRecommendationEvent("watch_complete", {
+        userId: user?.id,
+        videoId: video.id,
+        context: {
+          list_id: listId,
+          duration: video.duration,
+          category: video.category,
+        },
+      }).then();
+    };
+
+    videoElement.addEventListener("play", onPlay);
+    videoElement.addEventListener("ended", onEnded);
+    return () => {
+      videoElement.removeEventListener("play", onPlay);
+      videoElement.removeEventListener("ended", onEnded);
+    };
+  }, [videoElement, video, user?.id, listId, playlistCtx]);
+
+  // Check if current video is already in Watch Later
+  useEffect(() => {
+    if (!user || !id) return;
+    const checkWatchLater = async () => {
+      const { data: playlists } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("playlist_type", "watch_later");
+
+      if (!playlists || playlists.length === 0) return;
+      const playlistId = playlists[0].id;
+      setWatchLaterPlaylistId(playlistId);
+
+      const { data: items } = await supabase
+        .from("playlist_items")
+        .select("id")
+        .eq("playlist_id", playlistId)
+        .eq("video_id", id);
+
+      setWatchLaterSaved(!!(items && items.length > 0));
+    };
+    checkWatchLater();
+  }, [user, id]);
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Sign in to save videos");
+      return;
+    }
+    if (!id) return;
+    if (watchLaterSaved) { toast("Already saved to Watch Later"); return; }
+
+    let playlistId = watchLaterPlaylistId;
+    if (!playlistId) {
+      playlistId = await createPlaylist("Watch Later", undefined, undefined, "watch_later");
+      if (!playlistId) return;
+      setWatchLaterPlaylistId(playlistId);
+    }
+    const success = await addVideoToPlaylist(playlistId, id);
+    if (success) setWatchLaterSaved(true);
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = video?.title ?? "AfriTube Video";
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: title, url });
+        toast.success("Shared!");
+      } catch {
+        // user cancelled
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied!");
+    }
+  };
+
+  const handleSpeedChange = (value: string) => {
+    setPlaybackSpeed(value);
+    if (videoElement) {
+      videoElement.playbackRate = parseFloat(value);
+    }
+  };
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "0:00";
@@ -258,7 +454,7 @@ const Watch = () => {
         <Navbar />
         <div className="pt-20 flex flex-col items-center justify-center min-h-[60vh] text-center">
           <h1 className="text-2xl font-display font-bold text-foreground">Video not found</h1>
-          <p className="text-muted-foreground mt-2">This video may have been removed or doesn't exist.</p>
+          <p className="text-muted-foreground mt-2">{unavailableReason ?? "This video may have been removed or doesn't exist."}</p>
           <Link to="/">
             <Button className="mt-6 rounded-full">Go Home</Button>
           </Link>
@@ -268,6 +464,7 @@ const Watch = () => {
   }
 
   const canViewCreatorStats = isAdmin || user?.id === video.user_id;
+  const showAdNotice = !!creator?.is_monetized && user?.id !== video.user_id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -289,7 +486,31 @@ const Watch = () => {
                 autoPlay
                 className="w-full h-full object-contain"
                 poster={video.thumbnail_url ?? undefined}
-              />
+              >
+                {subtitleTrackUrl && (
+                  <track kind="subtitles" src={subtitleTrackUrl} srcLang="en" label="Subtitles" default />
+                )}
+              </video>
+            </div>
+
+            {/* Playback speed selector */}
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">Speed:</span>
+              <Select value={playbackSpeed} onValueChange={handleSpeedChange}>
+                <SelectTrigger className="w-28 h-7 text-xs rounded-full border-border bg-secondary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.25">0.25x</SelectItem>
+                  <SelectItem value="0.5">0.5x</SelectItem>
+                  <SelectItem value="0.75">0.75x</SelectItem>
+                  <SelectItem value="1">Normal</SelectItem>
+                  <SelectItem value="1.25">1.25x</SelectItem>
+                  <SelectItem value="1.5">1.5x</SelectItem>
+                  <SelectItem value="1.75">1.75x</SelectItem>
+                  <SelectItem value="2">2x</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Video Info */}
@@ -311,11 +532,28 @@ const Watch = () => {
               </div>
               <div className="flex gap-2">
                 <VideoReactions videoId={video.id} />
-                <Button variant="secondary" size="sm" className="rounded-full gap-1.5">
+                <Button variant="secondary" size="sm" className="rounded-full gap-1.5" onClick={handleShare}>
                   <Share2 size={16} /> Share
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full gap-1.5"
+                  onClick={handleSave}
+                >
+                  <Bookmark size={16} fill={watchLaterSaved ? "currentColor" : "none"} /> Save
                 </Button>
               </div>
             </div>
+
+            {showAdNotice && (
+              <div className="mt-4 p-3 rounded-xl border border-primary/30 bg-primary/10">
+                <p className="text-xs font-semibold text-primary">Sponsored</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ads are running on this video to support the creator.
+                </p>
+              </div>
+            )}
 
             {/* Creator Info */}
             <div className="flex items-center gap-3 mt-5 p-4 rounded-xl bg-card border border-border">
@@ -335,6 +573,11 @@ const Watch = () => {
                   <Link to={`/creator/${video.user_id}`} className="font-semibold text-foreground text-sm truncate hover:text-primary transition-colors">
                     {creator?.display_name ?? "Unknown Creator"}
                   </Link>
+                  {creator?.is_creator && (
+                    <span className="inline-flex items-center text-primary" title="Verified creator">
+                      <BadgeCheck size={14} />
+                    </span>
+                  )}
                   {canViewCreatorStats && creator?.is_monetized && (
                     <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
                       MONETIZED
@@ -354,8 +597,18 @@ const Watch = () => {
             {video.description && (
               <div className="mt-4 p-4 rounded-xl bg-card border border-border">
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {video.description}
+                  {video.description.length > DESCRIPTION_TRUNCATE_LENGTH && !descExpanded
+                    ? video.description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)
+                    : video.description}
                 </p>
+                {video.description.length > DESCRIPTION_TRUNCATE_LENGTH && (
+                  <span
+                    className="text-primary text-sm cursor-pointer font-medium"
+                    onClick={() => setDescExpanded((v) => !v)}
+                  >
+                    {descExpanded ? " Show less" : "...Show more"}
+                  </span>
+                )}
               </div>
             )}
 
