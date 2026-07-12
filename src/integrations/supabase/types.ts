@@ -324,12 +324,15 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
+          processing_status: string
+          publish_at: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
           user_id: string
           video_url: string
           views: number
+          visibility: string
         }
         Insert: {
           category?: string | null
@@ -338,12 +341,15 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          processing_status?: string
+          publish_at?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
           user_id: string
           video_url: string
           views?: number
+          visibility?: string
         }
         Update: {
           category?: string | null
@@ -352,12 +358,15 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          processing_status?: string
+          publish_at?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           video_url?: string
           views?: number
+          visibility?: string
         }
         Relationships: []
       }
@@ -419,6 +428,8 @@ export type Database = {
         }
         Returns: string
       }
+      disable_creator_ads: { Args: never; Returns: boolean }
+      enable_creator_ads: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

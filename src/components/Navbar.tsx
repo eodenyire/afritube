@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Upload, Bell, Menu, X, User, LogOut, Shield } from "lucide-react";
+import { useState } from "react";
+import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,6 +114,12 @@ const Navbar = () => {
             <Upload size={20} />
           </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
+          {user && (
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/history")}>
+              <HistoryIcon size={20} />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
             <Bell size={20} />
             {user && notifCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
@@ -194,6 +202,15 @@ const Navbar = () => {
                 </button>
               )}
               <div className="pt-2">
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => { setMobileOpen(false); navigate("/history"); }}
+                    className="block w-full text-left px-3 py-2 mb-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                  >
+                    Watch History
+                  </button>
+                )}
                 <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("mq") as HTMLInputElement).value; if (q.trim()) { setMobileOpen(false); navigate(`/search?q=${encodeURIComponent(q.trim())}`); } }} className="flex items-center rounded-full border border-border bg-secondary">
                   <input
                     name="mq"
