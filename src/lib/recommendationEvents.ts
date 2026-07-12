@@ -14,7 +14,7 @@ export const logRecommendationEvent = async (
   const { userId, videoId = null, context = {} } = options;
   if (!userId) return;
 
-  const { error } = await supabase.from("recommendation_events").insert({
+  const { error } = await (supabase as any).from("recommendation_events").insert({
     user_id: userId,
     video_id: videoId,
     event_type: eventType,
