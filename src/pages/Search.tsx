@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, SlidersHorizontal, X, Play, Music, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +67,45 @@ const Search = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [sortBy, setSortBy] = useState("relevance");
   const [durationFilter, setDurationFilter] = useState("any");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const activeSuggestionRequestRef = useRef(0);
+
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const requestId = activeSuggestionRequestRef.current + 1;
+    activeSuggestionRequestRef.current = requestId;
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase
+        .from("videos")
+        .select("title, category")
+        .eq("visibility", "public")
+        .eq("processing_status", "ready")
+        .or(`title.ilike.%${term}%,category.ilike.%${term}%`)
+        .order("views", { ascending: false })
+        .limit(10);
+
+      if (activeSuggestionRequestRef.current !== requestId) return;
+      const merged = Array.from(
+        new Set(
+          (data ?? [])
+            .flatMap((row: any) => [row.title, row.category])
+            .filter((value: string | null) => !!value)
+            .map((value: string) => value.trim()),
+        ),
+      )
+        .filter((value) => value.toLowerCase().includes(term.toLowerCase()))
+        .slice(0, 6);
+      setSuggestions(merged);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   const performSearch = async (q: string, type: ContentType = activeType) => {
     setLoading(true);
@@ -165,6 +204,7 @@ const Search = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     if (query.trim()) {
       setSearchParams({ q: query, type: activeType });
     } else {
@@ -175,6 +215,7 @@ const Search = () => {
 
   const handleTypeChange = (type: ContentType) => {
     setActiveType(type);
+    setShowSuggestions(false);
     if (query.trim()) {
       setSearchParams({ q: query, type });
     } else {
@@ -255,11 +296,13 @@ const Search = () => {
       <main className="max-w-[1440px] mx-auto px-4 md:px-6 pt-24 pb-20">
         {/* Search bar */}
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mb-8">
-          <div className="flex items-center rounded-full border border-border bg-secondary focus-within:border-primary focus-within:shadow-gold transition-all">
+          <div className="relative">
+            <div className="flex items-center rounded-full border border-border bg-secondary focus-within:border-primary focus-within:shadow-gold transition-all">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
               placeholder="Search videos, music, blogs..."
               className="flex-1 bg-transparent px-5 py-3 text-foreground placeholder:text-muted-foreground outline-none text-sm"
               autoFocus
@@ -272,6 +315,28 @@ const Search = () => {
             <button type="submit" className="px-5 py-3 text-muted-foreground hover:text-primary transition-colors">
               <SearchIcon size={20} />
             </button>
+            </div>
+
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 mt-2 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQuery(suggestion);
+                      setShowSuggestions(false);
+                      setSearchParams({ q: suggestion, type: activeType });
+                      performSearch(suggestion, activeType);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </form>
 

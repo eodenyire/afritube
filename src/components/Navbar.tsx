@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [notifCount, setNotifCount] = useState(0);
   const { user, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -40,6 +42,38 @@ const Navbar = () => {
     };
     fetchNotifCount();
   }, [user]);
+
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase
+        .from("videos")
+        .select("title, category")
+        .eq("visibility", "public")
+        .eq("processing_status", "ready")
+        .or(`title.ilike.%${term}%,category.ilike.%${term}%`)
+        .order("views", { ascending: false })
+        .limit(8);
+      const merged = Array.from(
+        new Set(
+          (data ?? [])
+            .flatMap((row: any) => [row.title, row.category])
+            .filter((value: string | null) => !!value)
+            .map((value: string) => value.trim()),
+        ),
+      )
+        .filter((value) => value.toLowerCase().includes(term.toLowerCase()))
+        .slice(0, 6);
+      setSearchSuggestions(merged);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleNotificationClick = () => {
     navigate("/subscriptions");
@@ -74,18 +108,48 @@ const Navbar = () => {
               searchFocused ? "border-primary shadow-gold" : "border-border"
             } bg-secondary`}
           >
-            <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("q") as HTMLInputElement).value; if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }} className="flex items-center w-full">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                  setSearchFocused(false);
+                }
+              }}
+              className="flex items-center w-full relative"
+            >
               <input
                 name="q"
                 type="text"
                 placeholder="Search videos, music, blogs..."
                 className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
               />
               <button type="submit" className="px-4 py-2 text-muted-foreground hover:text-primary transition-colors">
                 <Search size={18} />
               </button>
+              {searchFocused && searchSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] rounded-xl border border-border bg-card shadow-lg overflow-hidden z-30">
+                  {searchSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSearchQuery(suggestion);
+                        setSearchFocused(false);
+                        navigate(`/search?q=${encodeURIComponent(suggestion)}`);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </form>
           </div>
         </div>
