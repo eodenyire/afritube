@@ -118,7 +118,7 @@ const Watch = () => {
         return;
       }
       setUnavailableReason(null);
-      setVideo(vid);
+      setVideo(vid as any);
 
       // Increment view count (fire-and-forget)
       supabase
@@ -149,7 +149,7 @@ const Watch = () => {
         .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
         .order("views", { ascending: false })
         .limit(8);
-      setRelated(rel ?? []);
+      setRelated((rel ?? []) as any);
 
       setLoading(false);
     };
@@ -163,7 +163,7 @@ const Watch = () => {
     if (adLoggedForVideoRef.current === video.id) return;
     adLoggedForVideoRef.current = video.id;
 
-    supabase.rpc("log_ad_impression", {
+    (supabase as any).rpc("log_ad_impression", {
       p_video_id: video.id,
       p_creator_id: video.user_id,
       p_viewer_id: user?.id ?? null,

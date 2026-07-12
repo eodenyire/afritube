@@ -14,44 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_impressions: {
-        Row: {
-          ad_slot: string
-          created_at: string
-          creator_id: string
-          id: string
-          revenue_usd: number
-          video_id: string
-          viewer_id: string | null
-        }
-        Insert: {
-          ad_slot?: string
-          created_at?: string
-          creator_id: string
-          id?: string
-          revenue_usd?: number
-          video_id: string
-          viewer_id?: string | null
-        }
-        Update: {
-          ad_slot?: string
-          created_at?: string
-          creator_id?: string
-          id?: string
-          revenue_usd?: number
-          video_id?: string
-          viewer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ad_impressions_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "videos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       audio_tracks: {
         Row: {
           artist_name: string | null
@@ -246,42 +208,6 @@ export type Database = {
         }
         Relationships: []
       }
-      payout_requests: {
-        Row: {
-          amount_usd: number
-          created_at: string
-          creator_id: string
-          id: string
-          notes: string | null
-          payout_details: Json
-          payout_method: string | null
-          status: Database["public"]["Enums"]["payout_status"]
-          updated_at: string
-        }
-        Insert: {
-          amount_usd: number
-          created_at?: string
-          creator_id: string
-          id?: string
-          notes?: string | null
-          payout_details?: Json
-          payout_method?: string | null
-          status?: Database["public"]["Enums"]["payout_status"]
-          updated_at?: string
-        }
-        Update: {
-          amount_usd?: number
-          created_at?: string
-          creator_id?: string
-          id?: string
-          notes?: string | null
-          payout_details?: Json
-          payout_method?: string | null
-          status?: Database["public"]["Enums"]["payout_status"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -323,41 +249,6 @@ export type Database = {
           watch_hours?: number
         }
         Relationships: []
-      }
-      recommendation_events: {
-        Row: {
-          context: Json
-          created_at: string
-          event_type: Database["public"]["Enums"]["recommendation_event_type"]
-          id: string
-          user_id: string
-          video_id: string | null
-        }
-        Insert: {
-          context?: Json
-          created_at?: string
-          event_type: Database["public"]["Enums"]["recommendation_event_type"]
-          id?: string
-          user_id: string
-          video_id?: string | null
-        }
-        Update: {
-          context?: Json
-          created_at?: string
-          event_type?: Database["public"]["Enums"]["recommendation_event_type"]
-          id?: string
-          user_id?: string
-          video_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recommendation_events_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "videos"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       subscriptions: {
         Row: {
@@ -433,16 +324,15 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
-          processing_status: Database["public"]["Enums"]["video_processing_status"]
+          processing_status: string
           publish_at: string | null
-          subtitle_url: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
           user_id: string
           video_url: string
-          visibility: Database["public"]["Enums"]["video_visibility"]
           views: number
+          visibility: string
         }
         Insert: {
           category?: string | null
@@ -451,16 +341,15 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
-          processing_status?: Database["public"]["Enums"]["video_processing_status"]
+          processing_status?: string
           publish_at?: string | null
-          subtitle_url?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
           user_id: string
           video_url: string
-          visibility?: Database["public"]["Enums"]["video_visibility"]
           views?: number
+          visibility?: string
         }
         Update: {
           category?: string | null
@@ -469,16 +358,15 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
-          processing_status?: Database["public"]["Enums"]["video_processing_status"]
+          processing_status?: string
           publish_at?: string | null
-          subtitle_url?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           video_url?: string
-          visibility?: Database["public"]["Enums"]["video_visibility"]
           views?: number
+          visibility?: string
         }
         Relationships: []
       }
@@ -542,18 +430,6 @@ export type Database = {
       }
       disable_creator_ads: { Args: never; Returns: boolean }
       enable_creator_ads: { Args: never; Returns: boolean }
-      get_creator_earnings_summary: {
-        Args: { p_creator_id?: string }
-        Returns: {
-          impressions: number
-          paid_payout_usd: number
-          pending_payout_usd: number
-          rpm_usd: number
-          this_month_impressions: number
-          this_month_revenue_usd: number
-          total_revenue_usd: number
-        }[]
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -562,16 +438,6 @@ export type Database = {
         Returns: boolean
       }
       increment_streams: { Args: { track_id: string }; Returns: undefined }
-      log_ad_impression: {
-        Args: {
-          p_ad_slot?: string
-          p_creator_id: string
-          p_revenue_usd?: number
-          p_video_id: string
-          p_viewer_id?: string
-        }
-        Returns: boolean
-      }
       remove_video_from_playlist: {
         Args: { p_playlist_id: string; p_video_id: string }
         Returns: undefined
@@ -584,26 +450,10 @@ export type Database = {
         }
         Returns: undefined
       }
-      request_payout: {
-        Args: {
-          p_amount_usd: number
-          p_payout_details?: Json
-          p_payout_method?: string
-        }
-        Returns: string
-      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
       playlist_type: "album" | "ep" | "compilation" | "custom" | "watch_later"
-      payout_status: "pending" | "approved" | "paid" | "rejected"
-      recommendation_event_type:
-        | "search_query"
-        | "search_result_click"
-        | "watch_start"
-        | "watch_complete"
-      video_processing_status: "processing" | "ready" | "failed"
-      video_visibility: "public" | "unlisted" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -733,15 +583,6 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       playlist_type: ["album", "ep", "compilation", "custom", "watch_later"],
-      payout_status: ["pending", "approved", "paid", "rejected"],
-      recommendation_event_type: [
-        "search_query",
-        "search_result_click",
-        "watch_start",
-        "watch_complete",
-      ],
-      video_processing_status: ["processing", "ready", "failed"],
-      video_visibility: ["public", "unlisted", "private"],
     },
   },
 } as const

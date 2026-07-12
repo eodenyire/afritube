@@ -129,9 +129,9 @@ const Dashboard = () => {
       supabase.from("audio_tracks").select("id, title, artist_name, cover_url, streams, genre, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("blog_posts").select("id, title, cover_url, likes, comments_count, category, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
-    setVideos(vRes.data ?? []);
-    setAudios(aRes.data ?? []);
-    setBlogs(bRes.data ?? []);
+    setVideos((vRes.data ?? []) as any);
+    setAudios((aRes.data ?? []) as any);
+    setBlogs((bRes.data ?? []) as any);
     setLoading(false);
     setLastAnalyticsUpdatedAt(new Date().toISOString());
   }, [user]);
