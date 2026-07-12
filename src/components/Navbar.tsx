@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Upload, Bell, Menu, X, User, LogOut, Shield } from "lucide-react";
-import { useState } from "react";
-import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon } from "lucide-react";
+import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon, Clapperboard, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,6 +48,8 @@ const Navbar = () => {
 
   const navLinks = [
     { label: "Videos", href: "/#videos" },
+    { label: "Shorts", href: "/shorts" },
+    { label: "Live", href: "/live" },
     { label: "Music", href: "/#music" },
     { label: "Blogs", href: "/#blogs" },
     { label: "Creators", href: "/#creators" },
@@ -110,16 +110,31 @@ const Navbar = () => {
               <Shield size={14} /> Admin
             </Button>
           )}
+          {user && (
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5 hidden lg:flex" onClick={() => navigate("/studio/seo")}>
+              <Clapperboard size={14} /> Studio
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5 hidden lg:flex" onClick={() => navigate("/moderation")}>
+              <Shield size={14} /> Moderation
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/shorts")}>
+            <Clapperboard size={20} />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/live")}>
+            <Radio size={20} />
+          </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/upload")}>
             <Upload size={20} />
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
           {user && (
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/history")}>
               <HistoryIcon size={20} />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
             <Bell size={20} />
             {user && notifCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
@@ -199,6 +214,24 @@ const Navbar = () => {
                   className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
                 >
                   Admin Panel
+                </button>
+              )}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); navigate("/studio/seo"); }}
+                  className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                >
+                  Studio SEO
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); navigate("/moderation"); }}
+                  className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                >
+                  Moderation
                 </button>
               )}
               <div className="pt-2">
