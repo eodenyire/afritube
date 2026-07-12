@@ -253,11 +253,13 @@ const Index = () => {
     category: video.category ?? "General",
   }));
 
+  const usingRecommendedFeed = activeVideoCategory === "Trending" && recommendedVideoCards.length > 0;
   const videoCards = activeVideoCategory === "Trending"
-    ? (recommendedVideoCards.length > 0
-        ? recommendedVideoCards.slice(0, 8)
-        : [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)).slice(0, 8))
-    : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase()).slice(0, 8);
+    ? (usingRecommendedFeed
+        ? recommendedVideoCards
+        : [...allVideoCards].sort((a, b) => parseViews(b.views) - parseViews(a.views)))
+    : allVideoCards.filter((v) => v.category?.toLowerCase() === activeVideoCategory.toLowerCase());
+  const showInfiniteScroll = !usingRecommendedFeed && dbVideos.length > 0;
 
   const audioCards = dbAudios.length > 0
     ? dbAudios.map((a) => ({
