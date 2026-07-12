@@ -412,11 +412,33 @@ const Index = () => {
               No videos in the "{activeVideoCategory}" category yet.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
-              {videoCards.map((v) => (
-                <VideoCard key={v.title} {...v} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+                {videoCards.map((v: any, i: number) => (
+                  <VideoCard key={v.id ?? `${v.title}-${i}`} {...v} />
+                ))}
+              </div>
+              {showInfiniteScroll && (
+                <>
+                  {loadingMoreVideos && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="space-y-3">
+                          <Skeleton className="aspect-video rounded-xl" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {hasMoreVideos ? (
+                    <div ref={sentinelRef} className="h-10 mt-6" aria-hidden />
+                  ) : (
+                    <div className="text-center py-8 text-xs text-muted-foreground">You're all caught up.</div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </motion.section>
 
