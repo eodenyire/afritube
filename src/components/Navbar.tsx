@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Upload, Bell, Menu, X, User, LogOut, Shield } from "lucide-react";
-import { useState } from "react";
-import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon } from "lucide-react";
+import { Search, Upload, Bell, Menu, X, User, LogOut, Shield, History as HistoryIcon, Clapperboard, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [notifCount, setNotifCount] = useState(0);
   const { user, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +43,38 @@ const Navbar = () => {
     fetchNotifCount();
   }, [user]);
 
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (term.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase
+        .from("videos")
+        .select("title, category")
+        .eq("visibility", "public")
+        .eq("processing_status", "ready")
+        .or(`title.ilike.%${term}%,category.ilike.%${term}%`)
+        .order("views", { ascending: false })
+        .limit(8);
+      const merged = Array.from(
+        new Set(
+          (data ?? [])
+            .flatMap((row: any) => [row.title, row.category])
+            .filter((value: string | null) => !!value)
+            .map((value: string) => value.trim()),
+        ),
+      )
+        .filter((value) => value.toLowerCase().includes(term.toLowerCase()))
+        .slice(0, 6);
+      setSearchSuggestions(merged);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleNotificationClick = () => {
     navigate("/subscriptions");
     setNotifCount(0);
@@ -50,6 +82,8 @@ const Navbar = () => {
 
   const navLinks = [
     { label: "Videos", href: "/#videos" },
+    { label: "Shorts", href: "/shorts" },
+    { label: "Live", href: "/live" },
     { label: "Music", href: "/#music" },
     { label: "Blogs", href: "/#blogs" },
     { label: "Creators", href: "/#creators" },
@@ -74,18 +108,48 @@ const Navbar = () => {
               searchFocused ? "border-primary shadow-gold" : "border-border"
             } bg-secondary`}
           >
-            <form onSubmit={(e) => { e.preventDefault(); const q = (e.currentTarget.elements.namedItem("q") as HTMLInputElement).value; if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); }} className="flex items-center w-full">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                  setSearchFocused(false);
+                }
+              }}
+              className="flex items-center w-full relative"
+            >
               <input
                 name="q"
                 type="text"
                 placeholder="Search videos, music, blogs..."
                 className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
               />
               <button type="submit" className="px-4 py-2 text-muted-foreground hover:text-primary transition-colors">
                 <Search size={18} />
               </button>
+              {searchFocused && searchSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] rounded-xl border border-border bg-card shadow-lg overflow-hidden z-30">
+                  {searchSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSearchQuery(suggestion);
+                        setSearchFocused(false);
+                        navigate(`/search?q=${encodeURIComponent(suggestion)}`);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -110,16 +174,31 @@ const Navbar = () => {
               <Shield size={14} /> Admin
             </Button>
           )}
+          {user && (
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5 hidden lg:flex" onClick={() => navigate("/studio/seo")}>
+              <Clapperboard size={14} /> Studio
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5 hidden lg:flex" onClick={() => navigate("/moderation")}>
+              <Shield size={14} /> Moderation
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/shorts")}>
+            <Clapperboard size={20} />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/live")}>
+            <Radio size={20} />
+          </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/upload")}>
             <Upload size={20} />
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
           {user && (
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => navigate("/history")}>
               <HistoryIcon size={20} />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hidden sm:flex relative" onClick={handleNotificationClick}>
             <Bell size={20} />
             {user && notifCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
@@ -199,6 +278,24 @@ const Navbar = () => {
                   className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
                 >
                   Admin Panel
+                </button>
+              )}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); navigate("/studio/seo"); }}
+                  className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                >
+                  Studio SEO
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); navigate("/moderation"); }}
+                  className="block w-full text-left px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors"
+                >
+                  Moderation
                 </button>
               )}
               <div className="pt-2">

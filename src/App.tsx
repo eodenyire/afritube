@@ -26,6 +26,10 @@ import Playlists from "./pages/Playlists.tsx";
 import BrowsePlaylists from "./pages/BrowsePlaylists.tsx";
 import Mix from "./pages/Mix.tsx";
 import History from "./pages/History.tsx";
+import Shorts from "./pages/Shorts.tsx";
+import Live from "./pages/Live.tsx";
+import StudioSEO from "./pages/StudioSEO.tsx";
+import Moderation from "./pages/Moderation.tsx";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +62,10 @@ const App = () => (
              <Route path="/browse-playlists" element={<BrowsePlaylists />} />
               <Route path="/mix" element={<Mix />} />
               <Route path="/history" element={<History />} />
+              <Route path="/shorts" element={<Shorts />} />
+              <Route path="/live" element={<Live />} />
+              <Route path="/studio/seo" element={<StudioSEO />} />
+              <Route path="/moderation" element={<Moderation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

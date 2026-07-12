@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,6 +137,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("General");
   const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [isShort, setIsShort] = useState(false);
   const [publishAt, setPublishAt] = useState("");
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistTarget, setPlaylistTarget] = useState<string>("none");
@@ -415,6 +417,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         publish_at: string | null;
         processing_status?: "processing" | "ready" | "failed";
         subtitle_url?: string | null;
+        is_short?: boolean;
       } = {
         user_id: userId,
         title: title.trim(),
@@ -426,6 +429,7 @@ function VideoUploadForm({ userId }: { userId: string }) {
         visibility: finalVisibility,
         publish_at: finalPublishAt,
         processing_status: "processing",
+        is_short: isShort,
       };
       if (subtitleUrl) {
         videoPayload.subtitle_url = subtitleUrl;
@@ -540,6 +544,13 @@ function VideoUploadForm({ userId }: { userId: string }) {
               <SelectItem value="private">Private</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+          <div>
+            <Label htmlFor="is-short">Publish as Short</Label>
+            <p className="text-xs text-muted-foreground">Use for vertical, quick videos up to 60 seconds.</p>
+          </div>
+          <Switch id="is-short" checked={isShort} onCheckedChange={setIsShort} />
         </div>
         <div>
           <Label htmlFor="publish-at">Schedule publish (optional)</Label>
