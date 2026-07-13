@@ -323,7 +323,6 @@ export type Database = {
           description: string | null
           duration: number | null
           id: string
-          is_short: boolean
           is_published: boolean
           processing_status: string
           publish_at: string | null
@@ -341,7 +340,6 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: string
-          is_short?: boolean
           is_published?: boolean
           processing_status?: string
           publish_at?: string | null
@@ -359,7 +357,6 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: string
-          is_short?: boolean
           is_published?: boolean
           processing_status?: string
           publish_at?: string | null
