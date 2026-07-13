@@ -64,6 +64,7 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/shorts" element={<Shorts />} />
               <Route path="/live" element={<Live />} />
+              <Route path="/live/:id" element={<LiveWatch />} />
               <Route path="/studio/seo" element={<StudioSEO />} />
               <Route path="/moderation" element={<Moderation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
