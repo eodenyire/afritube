@@ -134,6 +134,44 @@ export type Database = {
         }
         Relationships: []
       }
+      live_chat_messages: {
+        Row: {
+          amount_usd: number | null
+          created_at: string
+          id: string
+          is_super_chat: boolean
+          message: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_usd?: number | null
+          created_at?: string
+          id?: string
+          is_super_chat?: boolean
+          message: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number | null
+          created_at?: string
+          id?: string
+          is_super_chat?: boolean
+          message?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_messages_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_streams: {
         Row: {
           created_at: string
@@ -141,6 +179,7 @@ export type Database = {
           description: string | null
           ended_at: string | null
           id: string
+          replay_video_id: string | null
           scheduled_for: string | null
           started_at: string | null
           status: string
@@ -157,6 +196,7 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          replay_video_id?: string | null
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
@@ -173,6 +213,7 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          replay_video_id?: string | null
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
@@ -183,7 +224,50 @@ export type Database = {
           viewer_count?: number
           visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "live_streams_replay_video_id_fkey"
+            columns: ["replay_video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_super_chats: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          id: string
+          message: string | null
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          created_at?: string
+          id?: string
+          message?: string | null
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          id?: string
+          message?: string | null
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_super_chats_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       playlist_items: {
         Row: {
