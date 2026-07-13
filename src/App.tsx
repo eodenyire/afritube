@@ -28,6 +28,7 @@ import Mix from "./pages/Mix.tsx";
 import History from "./pages/History.tsx";
 import Shorts from "./pages/Shorts.tsx";
 import Live from "./pages/Live.tsx";
+import LiveWatch from "./pages/LiveWatch.tsx";
 import StudioSEO from "./pages/StudioSEO.tsx";
 import Moderation from "./pages/Moderation.tsx";
 
