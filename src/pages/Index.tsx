@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, Zap } from "lucide-react";
-import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, ListVideo } from "lucide-react";
+import { Play, Music, BookOpen, TrendingUp, Upload, Sparkles, Zap, ListVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
