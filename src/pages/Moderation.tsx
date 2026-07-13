@@ -32,7 +32,7 @@ const Moderation = () => {
     }
 
     const load = async () => {
-      const { data } = await (supabase.from("moderation_reports") as any)
+      const { data } = await ((supabase as any).from("moderation_reports"))
         .select("id, target_type, reason, status")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -43,7 +43,7 @@ const Moderation = () => {
   }, [user, isAdmin, navigate]);
 
   const handleStatusChange = async (id: string, status: string) => {
-    const { error } = await (supabase.from("moderation_reports") as any)
+    const { error } = await ((supabase as any).from("moderation_reports"))
       .update({ status, reviewed_at: new Date().toISOString(), reviewer_id: user?.id })
       .eq("id", id);
 

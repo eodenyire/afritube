@@ -134,6 +134,57 @@ export type Database = {
         }
         Relationships: []
       }
+      live_streams: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          ended_at: string | null
+          id: string
+          scheduled_for: string | null
+          started_at: string | null
+          status: string
+          stream_url: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          viewer_count: number
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          viewer_count?: number
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          viewer_count?: number
+          visibility?: string
+        }
+        Relationships: []
+      }
       playlist_items: {
         Row: {
           added_at: string
@@ -323,7 +374,6 @@ export type Database = {
           description: string | null
           duration: number | null
           id: string
-          is_short: boolean
           is_published: boolean
           processing_status: string
           publish_at: string | null
@@ -341,7 +391,6 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: string
-          is_short?: boolean
           is_published?: boolean
           processing_status?: string
           publish_at?: string | null
@@ -359,7 +408,6 @@ export type Database = {
           description?: string | null
           duration?: number | null
           id?: string
-          is_short?: boolean
           is_published?: boolean
           processing_status?: string
           publish_at?: string | null

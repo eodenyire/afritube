@@ -49,7 +49,7 @@ const StudioSEO = () => {
     if (!user || !selectedVideoId) return;
 
     const loadSeo = async () => {
-      const { data } = await (supabase.from("video_seo_settings") as any)
+      const { data } = await ((supabase as any).from("video_seo_settings"))
         .select("thumbnail_title, tags")
         .eq("video_id", selectedVideoId)
         .eq("user_id", user.id)
@@ -71,7 +71,7 @@ const StudioSEO = () => {
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    const { error } = await (supabase.from("video_seo_settings") as any)
+    const { error } = await ((supabase as any).from("video_seo_settings"))
       .upsert({
         video_id: selectedVideoId,
         user_id: user.id,

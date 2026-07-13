@@ -44,7 +44,7 @@ const LiveWatch = () => {
   const [sending, setSending] = useState(false);
 
   const loadChatMessages = async (streamId: string) => {
-    const { data } = await (supabase.from("live_chat_messages") as any)
+    const { data } = await ((supabase as any).from("live_chat_messages"))
       .select("id, user_id, message, is_super_chat, amount_usd, created_at")
       .eq("stream_id", streamId)
       .order("created_at", { ascending: false })
@@ -109,7 +109,7 @@ const LiveWatch = () => {
     if (!message) return;
 
     setSending(true);
-    const { error } = await (supabase.from("live_chat_messages") as any).insert({
+    const { error } = await ((supabase as any).from("live_chat_messages")).insert({
       stream_id: stream.id,
       user_id: user.id,
       message,
@@ -142,14 +142,14 @@ const LiveWatch = () => {
 
     setSending(true);
     const [{ error: superChatError }, { error: chatMirrorError }] = await Promise.all([
-      (supabase.from("live_super_chats") as any).insert({
+      ((supabase as any).from("live_super_chats")).insert({
         stream_id: stream.id,
         viewer_id: user.id,
         creator_id: stream.creator_id,
         amount_usd: amount,
         message: message || null,
       }),
-      (supabase.from("live_chat_messages") as any).insert({
+      ((supabase as any).from("live_chat_messages")).insert({
         stream_id: stream.id,
         user_id: user.id,
         message: message || `Super Chat: $${amount.toFixed(2)}`,
