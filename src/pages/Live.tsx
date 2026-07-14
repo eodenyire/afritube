@@ -155,10 +155,15 @@ const Live = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground line-clamp-2">{stream.description ?? "No description yet."}</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button asChild size="sm" variant="secondary">
                       <Link to={`/live/${stream.id}`}>Open</Link>
                     </Button>
+                    {isOwner && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/live/studio/${stream.id}`}>Studio</Link>
+                      </Button>
+                    )}
                     {isOwner && stream.status === "scheduled" && (
                       <Button size="sm" onClick={() => goLive(stream.id)}>Go live</Button>
                     )}
