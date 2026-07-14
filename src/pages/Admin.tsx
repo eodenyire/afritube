@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Eye, Heart, Loader2, Music, ShieldCheck, Trash2, Users, Video } from "lucide-react";
+import { BadgeCheck, BookOpen, Check, Eye, Heart, Loader2, Music, ShieldCheck, Trash2, Users, Video, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
