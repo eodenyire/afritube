@@ -92,6 +92,20 @@ const Admin = () => {
     };
   }, [creators]);
 
+  const MONETIZATION_MIN_SUBS = 100;
+  const MONETIZATION_MIN_HOURS = 1000;
+
+  const pendingReview = useMemo(
+    () =>
+      creators.filter(
+        (c) =>
+          !c.monetized &&
+          c.subscribers >= MONETIZATION_MIN_SUBS &&
+          c.watchHours >= MONETIZATION_MIN_HOURS,
+      ),
+    [creators],
+  );
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
