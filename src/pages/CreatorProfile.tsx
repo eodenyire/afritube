@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SubscribeButton from "@/components/SubscribeButton";
-import { User, Eye, Clock, Play, Music, BookOpen, ListVideo, BadgeCheck } from "lucide-react";
+import { User, Eye, Clock, Play, Music, BookOpen, ListVideo, BadgeCheck, Radio } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
@@ -77,6 +77,7 @@ const CreatorProfile = () => {
   const [audio, setAudio] = useState<AudioTrack[]>([]);
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [playlists, setPlaylists] = useState<(Playlist & { video_count: number })[]>([]);
+  const [liveStreamId, setLiveStreamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -145,6 +146,15 @@ const CreatorProfile = () => {
         creator_name: (prof as any)?.display_name ?? null,
       })));
       setLoading(false);
+
+      // Live status (separate — cheap query, no need to block initial render)
+      const { data: liveRow } = await (supabase.from("live_streams") as any)
+        .select("id")
+        .eq("creator_id", userId)
+        .eq("status", "live")
+        .eq("visibility", "public")
+        .maybeSingle();
+      setLiveStreamId((liveRow as any)?.id ?? null);
     };
     load();
   }, [userId, user?.id, isAdmin]);
@@ -222,6 +232,14 @@ const CreatorProfile = () => {
                 <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                   ✦ MONETIZED
                 </span>
+              )}
+              {liveStreamId && (
+                <Link
+                  to={`/live/${liveStreamId}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 hover:bg-red-600 transition-colors"
+                >
+                  <Radio size={10} className="animate-pulse" /> LIVE NOW
+                </Link>
               )}
             </div>
             <div className="flex items-center justify-center sm:justify-start gap-4 text-sm text-muted-foreground mt-1">

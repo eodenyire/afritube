@@ -13,6 +13,7 @@ import BlogCard from "@/components/BlogCard";
 import CreatorBadge from "@/components/CreatorBadge";
 import SectionHeader from "@/components/SectionHeader";
 import CategoryPills from "@/components/CategoryPills";
+import LiveRail from "@/components/LiveRail";
 import Footer from "@/components/Footer";
 import PlaylistCard from "@/components/PlaylistCard";
 import { useMix } from "@/hooks/useMix";
@@ -359,6 +360,7 @@ const Index = () => {
       </section>
 
       <main className="max-w-[1440px] mx-auto px-4 md:px-6 space-y-16 pb-20">
+        <LiveRail />
         {/* Videos */}
         <motion.section {...fadeUp} id="videos">
           <SectionHeader

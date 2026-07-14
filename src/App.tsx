@@ -29,6 +29,7 @@ import History from "./pages/History.tsx";
 import Shorts from "./pages/Shorts.tsx";
 import Live from "./pages/Live.tsx";
 import LiveWatch from "./pages/LiveWatch.tsx";
+import LiveStudio from "./pages/LiveStudio.tsx";
 import StudioSEO from "./pages/StudioSEO.tsx";
 import Moderation from "./pages/Moderation.tsx";
 
@@ -65,6 +66,7 @@ const App = () => (
               <Route path="/history" element={<History />} />
               <Route path="/shorts" element={<Shorts />} />
               <Route path="/live" element={<Live />} />
+              <Route path="/live/studio/:id" element={<LiveStudio />} />
               <Route path="/live/:id" element={<LiveWatch />} />
               <Route path="/studio/seo" element={<StudioSEO />} />
               <Route path="/moderation" element={<Moderation />} />
