@@ -179,13 +179,20 @@ export type Database = {
           description: string | null
           ended_at: string | null
           id: string
+          ingest_url: string | null
+          latency_mode: string
+          peak_viewer_count: number
+          playback_url: string | null
+          record_replay: boolean
           replay_video_id: string | null
           scheduled_for: string | null
           started_at: string | null
           status: string
+          stream_key: string | null
           stream_url: string | null
           thumbnail_url: string | null
           title: string
+          total_super_chat_cents: number
           updated_at: string
           viewer_count: number
           visibility: string
@@ -196,13 +203,20 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          ingest_url?: string | null
+          latency_mode?: string
+          peak_viewer_count?: number
+          playback_url?: string | null
+          record_replay?: boolean
           replay_video_id?: string | null
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
+          stream_key?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title: string
+          total_super_chat_cents?: number
           updated_at?: string
           viewer_count?: number
           visibility?: string
@@ -213,13 +227,20 @@ export type Database = {
           description?: string | null
           ended_at?: string | null
           id?: string
+          ingest_url?: string | null
+          latency_mode?: string
+          peak_viewer_count?: number
+          playback_url?: string | null
+          record_replay?: boolean
           replay_video_id?: string | null
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
+          stream_key?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title?: string
+          total_super_chat_cents?: number
           updated_at?: string
           viewer_count?: number
           visibility?: string
@@ -384,6 +405,38 @@ export type Database = {
           watch_hours?: number
         }
         Relationships: []
+      }
+      stream_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          stream_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          stream_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          stream_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_reactions_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -565,6 +618,7 @@ export type Database = {
       }
       disable_creator_ads: { Args: never; Returns: boolean }
       enable_creator_ads: { Args: never; Returns: boolean }
+      get_stream_key: { Args: { p_stream_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -585,6 +639,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      rotate_stream_key: { Args: { p_stream_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
