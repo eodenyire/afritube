@@ -324,9 +324,89 @@ const Admin = () => {
               </Card>
             </div>
 
+            <Card className="mb-8 border-primary/40">
+              <CardHeader>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <BadgeCheck size={18} className="text-primary" /> Monetization Review
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Creators meeting the ads threshold ({MONETIZATION_MIN_SUBS}+ subscribers &amp; {formatNumber(MONETIZATION_MIN_HOURS)}+ watch hours).
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="rounded-full">
+                    {pendingReview.length} pending
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {pendingReview.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">
+                    No creators awaiting monetization review right now.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Creator</TableHead>
+                        <TableHead>Subscribers</TableHead>
+                        <TableHead>Watch Hours</TableHead>
+                        <TableHead>Views</TableHead>
+                        <TableHead>Uploads</TableHead>
+                        <TableHead className="text-right">Decision</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingReview.map((creator) => (
+                        <TableRow key={creator.userId}>
+                          <TableCell className="font-medium">
+                            <button
+                              className="hover:underline text-left"
+                              onClick={() => navigate(`/creator/${creator.userId}`)}
+                            >
+                              {creator.name}
+                            </button>
+                          </TableCell>
+                          <TableCell>{formatNumber(creator.subscribers)}</TableCell>
+                          <TableCell>{formatNumber(creator.watchHours)}</TableCell>
+                          <TableCell>{formatNumber(creator.totalViews)}</TableCell>
+                          <TableCell>{creator.videos + creator.audios + creator.blogs}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                className="rounded-full gap-1"
+                                onClick={() => handleToggleMonetized(creator.userId, false)}
+                              >
+                                <Check size={14} /> Approve for ads
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full gap-1"
+                                onClick={() =>
+                                  toast({
+                                    title: "Review deferred",
+                                    description: `${creator.name} will remain unmonetized until re-reviewed.`,
+                                  })
+                                }
+                              >
+                                <X size={14} /> Defer
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="mb-8">
               <CardHeader>
-                <CardTitle className="text-lg">Creators</CardTitle>
+                <CardTitle className="text-lg">All Creators</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
