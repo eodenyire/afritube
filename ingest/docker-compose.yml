@@ -1,0 +1,32 @@
+version: "3.8"
+
+# AfriTube self-hosted RTMP + HLS ingest server (Path A).
+# Run on any small Ubuntu VPS with ports 1935 (RTMP) and 8080 (HLS) open.
+#
+#   cp .env.example .env       # then edit
+#   docker compose up -d
+#
+# OBS ingest URL:  rtmp://<your-host>:1935/live
+# OBS stream key:  <stream_key from AfriTube studio>
+# Playback URL:    http://<your-host>:8080/hls/<stream_id>/index.m3u8
+
+services:
+  rtmp:
+    image: tiangolo/nginx-rtmp:latest
+    container_name: afritube-rtmp
+    restart: unless-stopped
+    ports:
+      - "1935:1935"   # RTMP ingest
+      - "8080:8080"   # HLS playback + stat page
+    environment:
+      # Full URL of the deployed Supabase edge function.
+      # Example: https://ycywpqzaquqzhiagjzlm.supabase.co/functions/v1/stream-ingest-auth
+      INGEST_AUTH_URL: ${INGEST_AUTH_URL}
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - hls-data:/tmp/hls
+      - recordings:/var/rec
+
+volumes:
+  hls-data:
+  recordings:
