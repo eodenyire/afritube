@@ -25,7 +25,22 @@ interface LiveStream {
   description: string | null;
   status: "scheduled" | "live" | "ended" | "canceled";
   scheduled_for: string | null;
+  last_publish_at: string | null;
+  hls_ready: boolean | null;
+  playback_url: string | null;
 }
+
+const formatRelative = (iso: string | null) => {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return new Date(iso).toLocaleString();
+};
 
 const Live = () => {
   const { user } = useAuth();
@@ -38,13 +53,14 @@ const Live = () => {
 
   const load = async () => {
     const { data } = await (supabase.from("live_streams") as any)
-      .select("id, creator_id, title, description, status, scheduled_for")
+      .select("id, creator_id, title, description, status, scheduled_for, last_publish_at, hls_ready, playback_url")
       .in("status", ["scheduled", "live"])
       .eq("visibility", "public")
       .order("scheduled_for", { ascending: true })
       .limit(20);
     setStreams((data ?? []) as LiveStream[]);
   };
+
 
   useEffect(() => {
     load();
