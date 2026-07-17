@@ -1,1 +1,4 @@
 project_id = "ycywpqzaquqzhiagjzlm"
+
+[functions.stream-ingest-auth]
+verify_jwt = false
