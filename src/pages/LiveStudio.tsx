@@ -87,7 +87,24 @@ const LiveStudio = () => {
     load();
   }, [id]);
 
+  // Realtime: reflect ingest updates written by the edge function.
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`studio-stream-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "live_streams", filter: `id=eq.${id}` },
+        (payload) => setStream((prev) => (prev ? { ...prev, ...(payload.new as StreamRow) } : prev)),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [id]);
+
   const isOwner = user && stream && user.id === stream.creator_id;
+
 
   const revealKey = async () => {
     if (!stream) return;
