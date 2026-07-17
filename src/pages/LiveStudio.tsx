@@ -382,6 +382,50 @@ const LiveStudio = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
+                <CardTitle className="text-base">Ingest health</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">HLS output</span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                      stream.hls_ready ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <CircleDot size={10} className={stream.hls_ready ? "fill-current" : ""} />
+                    {stream.hls_ready ? "Ready" : "Idle"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium text-foreground">{stream.status}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last publish</span>
+                  <span className="font-mono text-xs">
+                    {stream.last_publish_at ? new Date(stream.last_publish_at).toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last publish end</span>
+                  <span className="font-mono text-xs">
+                    {stream.last_publish_done_at ? new Date(stream.last_publish_done_at).toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Recording replay</span>
+                  <span>{stream.record_replay ? "on" : "off"}</span>
+                </div>
+                <p className="pt-2 border-t border-border text-[11px] text-muted-foreground">
+                  Updates automatically when the ingest server calls the auth webhook on publish/publish_done.
+                  If "Last publish" stays empty after you start OBS, check the ingest server logs.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+
+              <CardHeader>
                 <CardTitle className="text-base">Stream details</CardTitle>
               </CardHeader>
               <CardContent>
