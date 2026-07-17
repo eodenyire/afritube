@@ -187,14 +187,16 @@ const LiveStudio = () => {
   const endStream = async () => {
     if (!stream) return;
     if (!window.confirm("End this broadcast?")) return;
+    const endedAt = new Date().toISOString();
     const { error } = await (supabase.from("live_streams") as any)
-      .update({ status: "ended", ended_at: new Date().toISOString() })
+      .update({ status: "ended", ended_at: endedAt, hls_ready: false, last_publish_done_at: endedAt })
       .eq("id", stream.id);
     if (error) return toast.error(error.message);
     stopBrowserPreview();
     toast.success("Broadcast ended");
-    setStream({ ...stream, status: "ended", ended_at: new Date().toISOString() });
+    setStream({ ...stream, status: "ended", ended_at: endedAt, hls_ready: false, last_publish_done_at: endedAt });
   };
+
 
   const updateSetting = async (patch: Partial<StreamRow>) => {
     if (!stream) return;
