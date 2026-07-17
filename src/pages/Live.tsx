@@ -171,6 +171,25 @@ const Live = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground line-clamp-2">{stream.description ?? "No description yet."}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${
+                        stream.hls_ready ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"
+                      }`}
+                      title="Whether the ingest server has an active RTMP publisher and HLS output"
+                    >
+                      <Circle size={8} className={stream.hls_ready ? "fill-current" : ""} />
+                      {stream.hls_ready ? "HLS ready" : "HLS idle"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      Last publish: {formatRelative(stream.last_publish_at)}
+                    </span>
+                    {stream.playback_url && (
+                      <span className="text-muted-foreground truncate max-w-[220px]" title={stream.playback_url}>
+                        · playback set
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button asChild size="sm" variant="secondary">
                       <Link to={`/live/${stream.id}`}>Open</Link>
@@ -189,6 +208,7 @@ const Live = () => {
             );
           })}
         </div>
+
 
         {streams.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">

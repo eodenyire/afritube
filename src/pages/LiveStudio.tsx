@@ -39,7 +39,11 @@ interface StreamRow {
   latency_mode: "low" | "normal";
   record_replay: boolean;
   peak_viewer_count: number;
+  last_publish_at: string | null;
+  last_publish_done_at: string | null;
+  hls_ready: boolean | null;
 }
+
 
 const LiveStudio = () => {
   const { id } = useParams<{ id: string }>();
