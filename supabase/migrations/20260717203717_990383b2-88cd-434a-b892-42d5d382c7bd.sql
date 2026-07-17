@@ -1,0 +1,5 @@
+
+ALTER TABLE public.live_streams
+  ADD COLUMN IF NOT EXISTS last_publish_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_publish_done_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS hls_ready BOOLEAN NOT NULL DEFAULT false;
