@@ -39,7 +39,11 @@ interface StreamRow {
   latency_mode: "low" | "normal";
   record_replay: boolean;
   peak_viewer_count: number;
+  last_publish_at: string | null;
+  last_publish_done_at: string | null;
+  hls_ready: boolean | null;
 }
+
 
 const LiveStudio = () => {
   const { id } = useParams<{ id: string }>();
@@ -83,7 +87,24 @@ const LiveStudio = () => {
     load();
   }, [id]);
 
+  // Realtime: reflect ingest updates written by the edge function.
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`studio-stream-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "live_streams", filter: `id=eq.${id}` },
+        (payload) => setStream((prev) => (prev ? { ...prev, ...(payload.new as StreamRow) } : prev)),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [id]);
+
   const isOwner = user && stream && user.id === stream.creator_id;
+
 
   const revealKey = async () => {
     if (!stream) return;
@@ -166,14 +187,16 @@ const LiveStudio = () => {
   const endStream = async () => {
     if (!stream) return;
     if (!window.confirm("End this broadcast?")) return;
+    const endedAt = new Date().toISOString();
     const { error } = await (supabase.from("live_streams") as any)
-      .update({ status: "ended", ended_at: new Date().toISOString() })
+      .update({ status: "ended", ended_at: endedAt, hls_ready: false, last_publish_done_at: endedAt })
       .eq("id", stream.id);
     if (error) return toast.error(error.message);
     stopBrowserPreview();
     toast.success("Broadcast ended");
-    setStream({ ...stream, status: "ended", ended_at: new Date().toISOString() });
+    setStream({ ...stream, status: "ended", ended_at: endedAt, hls_ready: false, last_publish_done_at: endedAt });
   };
+
 
   const updateSetting = async (patch: Partial<StreamRow>) => {
     if (!stream) return;
@@ -360,6 +383,50 @@ const LiveStudio = () => {
 
           <div className="space-y-6">
             <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Ingest health</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">HLS output</span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                      stream.hls_ready ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <CircleDot size={10} className={stream.hls_ready ? "fill-current" : ""} />
+                    {stream.hls_ready ? "Ready" : "Idle"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium text-foreground">{stream.status}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last publish</span>
+                  <span className="font-mono text-xs">
+                    {stream.last_publish_at ? new Date(stream.last_publish_at).toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last publish end</span>
+                  <span className="font-mono text-xs">
+                    {stream.last_publish_done_at ? new Date(stream.last_publish_done_at).toLocaleString() : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Recording replay</span>
+                  <span>{stream.record_replay ? "on" : "off"}</span>
+                </div>
+                <p className="pt-2 border-t border-border text-[11px] text-muted-foreground">
+                  Updates automatically when the ingest server calls the auth webhook on publish/publish_done.
+                  If "Last publish" stays empty after you start OBS, check the ingest server logs.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+
               <CardHeader>
                 <CardTitle className="text-base">Stream details</CardTitle>
               </CardHeader>

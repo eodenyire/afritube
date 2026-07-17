@@ -178,8 +178,11 @@ export type Database = {
           creator_id: string
           description: string | null
           ended_at: string | null
+          hls_ready: boolean
           id: string
           ingest_url: string | null
+          last_publish_at: string | null
+          last_publish_done_at: string | null
           latency_mode: string
           peak_viewer_count: number
           playback_url: string | null
@@ -202,8 +205,11 @@ export type Database = {
           creator_id: string
           description?: string | null
           ended_at?: string | null
+          hls_ready?: boolean
           id?: string
           ingest_url?: string | null
+          last_publish_at?: string | null
+          last_publish_done_at?: string | null
           latency_mode?: string
           peak_viewer_count?: number
           playback_url?: string | null
@@ -226,8 +232,11 @@ export type Database = {
           creator_id?: string
           description?: string | null
           ended_at?: string | null
+          hls_ready?: boolean
           id?: string
           ingest_url?: string | null
+          last_publish_at?: string | null
+          last_publish_done_at?: string | null
           latency_mode?: string
           peak_viewer_count?: number
           playback_url?: string | null

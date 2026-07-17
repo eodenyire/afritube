@@ -25,7 +25,22 @@ interface LiveStream {
   description: string | null;
   status: "scheduled" | "live" | "ended" | "canceled";
   scheduled_for: string | null;
+  last_publish_at: string | null;
+  hls_ready: boolean | null;
+  playback_url: string | null;
 }
+
+const formatRelative = (iso: string | null) => {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return new Date(iso).toLocaleString();
+};
 
 const Live = () => {
   const { user } = useAuth();
@@ -38,13 +53,14 @@ const Live = () => {
 
   const load = async () => {
     const { data } = await (supabase.from("live_streams") as any)
-      .select("id, creator_id, title, description, status, scheduled_for")
+      .select("id, creator_id, title, description, status, scheduled_for, last_publish_at, hls_ready, playback_url")
       .in("status", ["scheduled", "live"])
       .eq("visibility", "public")
       .order("scheduled_for", { ascending: true })
       .limit(20);
     setStreams((data ?? []) as LiveStream[]);
   };
+
 
   useEffect(() => {
     load();
@@ -155,6 +171,25 @@ const Live = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground line-clamp-2">{stream.description ?? "No description yet."}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${
+                        stream.hls_ready ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"
+                      }`}
+                      title="Whether the ingest server has an active RTMP publisher and HLS output"
+                    >
+                      <Circle size={8} className={stream.hls_ready ? "fill-current" : ""} />
+                      {stream.hls_ready ? "HLS ready" : "HLS idle"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      Last publish: {formatRelative(stream.last_publish_at)}
+                    </span>
+                    {stream.playback_url && (
+                      <span className="text-muted-foreground truncate max-w-[220px]" title={stream.playback_url}>
+                        · playback set
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button asChild size="sm" variant="secondary">
                       <Link to={`/live/${stream.id}`}>Open</Link>
@@ -173,6 +208,7 @@ const Live = () => {
             );
           })}
         </div>
+
 
         {streams.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
