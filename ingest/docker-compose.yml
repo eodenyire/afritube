@@ -20,10 +20,17 @@ services:
       - "8080:8080"   # HLS playback + stat page
     environment:
       # Full URL of the deployed Supabase edge function.
-      # Example: https://ycywpqzaquqzhiagjzlm.supabase.co/functions/v1/stream-ingest-auth
+      # Example: https://<project-ref>.supabase.co/functions/v1/stream-ingest-auth
       INGEST_AUTH_URL: ${INGEST_AUTH_URL}
+      # Used by upload-replay.sh to push the finished mp4 to Storage and
+      # notify the stream-replay-uploaded edge function.
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      REPLAY_WEBHOOK_URL: ${REPLAY_WEBHOOK_URL}
+      REPLAY_BUCKET: ${REPLAY_BUCKET:-videos}
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./upload-replay.sh:/usr/local/bin/upload-replay.sh:ro
       - hls-data:/tmp/hls
       - recordings:/var/rec
 
