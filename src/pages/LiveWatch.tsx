@@ -476,7 +476,9 @@ const LiveWatch = () => {
                     <div
                       key={message.id}
                       className={`rounded-lg p-2 text-sm ${
-                        message.is_super_chat ? "bg-primary/15 border border-primary/30" : "bg-secondary"
+                        message.is_super_chat
+                          ? `border ${superChatTier(message.amount_usd)}`
+                          : "bg-secondary"
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-0.5">
