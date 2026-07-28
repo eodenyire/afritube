@@ -193,8 +193,42 @@ const LiveStudio = () => {
       .eq("id", stream.id);
     if (error) return toast.error(error.message);
     stopBrowserPreview();
-    toast.success("Broadcast ended");
-    setStream({ ...stream, status: "ended", ended_at: endedAt, hls_ready: false, last_publish_done_at: endedAt });
+
+    // If replay recording is on and we have a playback URL, create a video row
+    // so the replay is visible immediately (nginx exec_record_done can later
+    // POST an mp4 upload URL that replaces this URL).
+    let replayId: string | null = null;
+    if (stream.record_replay && stream.playback_url && !stream.replay_video_id) {
+      const { data: video } = await (supabase.from("videos") as any)
+        .insert({
+          user_id: stream.creator_id,
+          title: `${stream.title} — replay`,
+          description: stream.description ?? null,
+          video_url: stream.playback_url,
+          thumbnail_url: stream.thumbnail_url,
+          category: "Live",
+          visibility: stream.visibility === "public" ? "public" : "unlisted",
+          processing_status: "ready",
+        })
+        .select("id")
+        .maybeSingle();
+      replayId = (video as any)?.id ?? null;
+      if (replayId) {
+        await (supabase.from("live_streams") as any)
+          .update({ replay_video_id: replayId })
+          .eq("id", stream.id);
+      }
+    }
+
+    toast.success(replayId ? "Broadcast ended. Replay saved." : "Broadcast ended");
+    setStream({
+      ...stream,
+      status: "ended",
+      ended_at: endedAt,
+      hls_ready: false,
+      last_publish_done_at: endedAt,
+      ...(replayId ? { replay_video_id: replayId } : {}),
+    } as StreamRow);
   };
 
 
