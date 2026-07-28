@@ -45,6 +45,16 @@ interface FloatingReaction {
 
 const REACTION_EMOJIS = ["❤️", "🔥", "👏", "😂", "🎉", "🙌"];
 
+const superChatTier = (amount: number | null | undefined) => {
+  const v = Number(amount ?? 0);
+  if (v >= 100) return "bg-pink-500/20 border-pink-500/50 text-pink-100";
+  if (v >= 50) return "bg-orange-500/20 border-orange-500/50 text-orange-100";
+  if (v >= 20) return "bg-amber-500/20 border-amber-500/50 text-amber-100";
+  if (v >= 10) return "bg-emerald-500/20 border-emerald-500/50 text-emerald-100";
+  if (v >= 5) return "bg-teal-500/20 border-teal-500/50 text-teal-100";
+  return "bg-sky-500/20 border-sky-500/50 text-sky-100";
+};
+
 const LiveWatch = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
