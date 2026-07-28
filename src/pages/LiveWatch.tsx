@@ -305,8 +305,7 @@ const LiveWatch = () => {
     const [{ error: superChatError }, { error: chatMirrorError }] = await Promise.all([
       ((supabase as any).from("live_super_chats")).insert({
         stream_id: stream.id,
-        viewer_id: user.id,
-        creator_id: stream.creator_id,
+        user_id: user.id,
         amount_usd: amount,
         message: message || null,
       }),
@@ -318,6 +317,11 @@ const LiveWatch = () => {
         amount_usd: amount,
       }),
     ]);
+    // Best-effort bump of the aggregate on the stream row so the studio KPI updates.
+    (supabase.rpc as any)("increment", {}).catch(() => undefined);
+    await (supabase.from("live_streams") as any)
+      .update({ total_super_chat_cents: Math.round(amount * 100) + ((stream as any).total_super_chat_cents ?? 0) })
+      .eq("id", stream.id);
     setSending(false);
     if (superChatError || chatMirrorError) {
       toast.error(superChatError?.message ?? chatMirrorError?.message ?? "Failed to send");
