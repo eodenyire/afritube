@@ -60,7 +60,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audio_tracks_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       blog_posts: {
         Row: {
@@ -105,7 +113,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       comments: {
         Row: {
@@ -132,7 +148,15 @@ export type Database = {
           user_id?: string
           video_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comments_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       live_chat_messages: {
         Row: {
@@ -256,6 +280,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "live_streams_creator_id_profiles_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "live_streams_replay_video_id_fkey"
             columns: ["replay_video_id"]
             isOneToOne: false
@@ -371,7 +402,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "playlists_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -521,6 +560,7 @@ export type Database = {
           duration: number | null
           id: string
           is_published: boolean
+          is_short: boolean
           processing_status: string
           publish_at: string | null
           thumbnail_url: string | null
@@ -538,6 +578,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          is_short?: boolean
           processing_status?: string
           publish_at?: string | null
           thumbnail_url?: string | null
@@ -555,6 +596,7 @@ export type Database = {
           duration?: number | null
           id?: string
           is_published?: boolean
+          is_short?: boolean
           processing_status?: string
           publish_at?: string | null
           thumbnail_url?: string | null
@@ -565,7 +607,15 @@ export type Database = {
           views?: number
           visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "videos_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       watch_history: {
         Row: {
