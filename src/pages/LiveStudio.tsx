@@ -43,7 +43,6 @@ interface StreamRow {
   last_publish_done_at: string | null;
   hls_ready: boolean | null;
   replay_video_id: string | null;
-  thumbnail_url: string | null;
 }
 
 
