@@ -72,7 +72,9 @@ const LiveStudio = () => {
     const load = async () => {
       setLoading(true);
       const { data, error } = await (supabase.from("live_streams") as any)
-        .select("*")
+        .select(
+          "id, creator_id, title, description, status, visibility, scheduled_for, started_at, ended_at, thumbnail_url, ingest_url, playback_url, latency_mode, record_replay, viewer_count, peak_viewer_count, total_super_chat_cents, last_publish_at, last_publish_done_at, hls_ready, replay_video_id, created_at, updated_at",
+        )
         .eq("id", id)
         .maybeSingle();
       if (error || !data) {

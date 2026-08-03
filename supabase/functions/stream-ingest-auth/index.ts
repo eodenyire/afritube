@@ -48,11 +48,19 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  const { data: stream, error } = await admin
-    .from("live_streams")
-    .select("id, creator_id, status, playback_url")
+  const { data: cred } = await admin
+    .from("live_stream_credentials")
+    .select("stream_id")
     .eq("stream_key", streamKey)
     .maybeSingle();
+
+  const { data: stream, error } = cred
+    ? await admin
+        .from("live_streams")
+        .select("id, creator_id, status, playback_url")
+        .eq("id", cred.stream_id)
+        .maybeSingle()
+    : { data: null, error: new Error("unknown stream key") };
 
   if (error || !stream) {
     console.log("[ingest-auth] reject: unknown key", { error });
