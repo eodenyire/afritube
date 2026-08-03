@@ -196,6 +196,35 @@ export type Database = {
           },
         ]
       }
+      live_stream_credentials: {
+        Row: {
+          created_at: string
+          stream_id: string
+          stream_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          stream_id: string
+          stream_key?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          stream_id?: string
+          stream_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_stream_credentials_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: true
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_streams: {
         Row: {
           created_at: string
@@ -215,7 +244,6 @@ export type Database = {
           scheduled_for: string | null
           started_at: string | null
           status: string
-          stream_key: string | null
           stream_url: string | null
           thumbnail_url: string | null
           title: string
@@ -242,7 +270,6 @@ export type Database = {
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
-          stream_key?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title: string
@@ -269,7 +296,6 @@ export type Database = {
           scheduled_for?: string | null
           started_at?: string | null
           status?: string
-          stream_key?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title?: string
