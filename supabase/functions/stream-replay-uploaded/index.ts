@@ -50,6 +50,14 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  const logEvent = async (row: Record<string, unknown>) => {
+    try {
+      await admin.from("stream_events").insert(row);
+    } catch (e) {
+      console.log("[replay] failed to log event", e);
+    }
+  };
+
   const { data: cred } = await admin
     .from("live_stream_credentials")
     .select("stream_id")
@@ -65,6 +73,14 @@ Deno.serve(async (req) => {
     : { data: null, error: new Error("unknown stream key") };
 
   if (error || !stream) {
+    await logEvent({
+      stream_id: null,
+      stream_key_hint: streamKey.slice(0, 6) + "…",
+      event_type: "replay_upload_failed",
+      status: "error",
+      error_message: "unknown stream key",
+      metadata: { video_url: videoUrl },
+    });
     return new Response(JSON.stringify({ error: "unknown stream key" }), {
       status: 403,
       headers: { ...cors, "content-type": "application/json" },
