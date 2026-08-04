@@ -256,7 +256,12 @@ const Admin = () => {
             <h1 className="font-display text-3xl font-bold text-foreground">Admin Panel</h1>
             <p className="text-muted-foreground">Manage creators, content, and platform insights.</p>
           </div>
-          <Button variant="outline" className="rounded-full" onClick={loadData}>Refresh</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="rounded-full" onClick={() => navigate("/admin/monitoring")}>
+              Monitoring
+            </Button>
+            <Button variant="outline" className="rounded-full" onClick={loadData}>Refresh</Button>
+          </div>
         </div>
 
         {loading ? (
