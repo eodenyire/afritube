@@ -35,6 +35,8 @@ const LiveWatch = lazy(() => import("./pages/LiveWatch.tsx"));
 const LiveStudio = lazy(() => import("./pages/LiveStudio.tsx"));
 const StudioSEO = lazy(() => import("./pages/StudioSEO.tsx"));
 const Moderation = lazy(() => import("./pages/Moderation.tsx"));
+const Monitoring = lazy(() => import("./pages/Monitoring.tsx"));
+const AdsManager = lazy(() => import("./pages/AdsManager.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,8 @@ const App = () => (
                   <Route path="/live/:id" element={<LiveWatch />} />
                   <Route path="/studio/seo" element={<StudioSEO />} />
                   <Route path="/moderation" element={<Moderation />} />
+                  <Route path="/admin/monitoring" element={<Monitoring />} />
+                  <Route path="/ads" element={<AdsManager />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -48,6 +48,14 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  const logEvent = async (row: Record<string, unknown>) => {
+    try {
+      await admin.from("stream_events").insert(row);
+    } catch (e) {
+      console.log("[ingest-auth] failed to log event", e);
+    }
+  };
+
   const { data: cred } = await admin
     .from("live_stream_credentials")
     .select("stream_id")
@@ -64,13 +72,21 @@ Deno.serve(async (req) => {
 
   if (error || !stream) {
     console.log("[ingest-auth] reject: unknown key", { error });
+    await logEvent({
+      stream_id: null,
+      stream_key_hint: streamKey.slice(0, 6) + "…",
+      event_type: "ingest_auth_failed",
+      status: "error",
+      error_message: (error as Error)?.message ?? "unknown stream key",
+      metadata: { addr: body.addr ?? null, app: body.app ?? null, event },
+    });
     return new Response("invalid stream key", { status: 403, headers: cors });
   }
 
   const now = new Date().toISOString();
 
   if (event === "publish_done" || event === "done") {
-    await admin
+    const { error: updErr } = await admin
       .from("live_streams")
       .update({
         status: "ended",
@@ -79,6 +95,13 @@ Deno.serve(async (req) => {
         hls_ready: false,
       })
       .eq("id", stream.id);
+    await logEvent({
+      stream_id: stream.id,
+      event_type: "ingest_publish_done",
+      status: updErr ? "error" : "success",
+      error_message: updErr?.message ?? null,
+      metadata: { addr: body.addr ?? null },
+    });
     return new Response("ok", { status: 200, headers: cors });
   }
 
@@ -93,7 +116,14 @@ Deno.serve(async (req) => {
     patch.playback_url = `${HLS_BASE_URL}/hls/${stream.id}/index.m3u8`;
   }
 
-  await admin.from("live_streams").update(patch).eq("id", stream.id);
+  const { error: pubErr } = await admin.from("live_streams").update(patch).eq("id", stream.id);
+  await logEvent({
+    stream_id: stream.id,
+    event_type: "ingest_publish",
+    status: pubErr ? "error" : "success",
+    error_message: pubErr?.message ?? null,
+    metadata: { addr: body.addr ?? null, playback_url: patch.playback_url ?? stream.playback_url },
+  });
 
   // Return the stream id so nginx can use it as the HLS output folder
   return new Response(stream.id, {

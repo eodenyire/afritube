@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 
@@ -22,12 +23,18 @@ const Advertise = () => {
             <li>Collaborations and sponsored campaigns with top creators.</li>
           </ul>
         </section>
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold">Availability</h2>
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Self-serve is live</h2>
           <p className="text-muted-foreground">
-            Advertising tools are rolling out in phases. This page will be updated as soon as self-serve and
-            partnership options become available.
+            Create an advertiser account, upload your creative, set a budget and CPM bid, and your campaign runs as
+            pre-roll on monetized creators' videos. Creators keep 55% of ad revenue.
           </p>
+          <Link
+            to="/ads"
+            className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-5 py-2 text-sm font-medium"
+          >
+            Open Ads manager
+          </Link>
         </section>
       </main>
       <Footer />

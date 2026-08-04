@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logRecommendationEvent } from "@/lib/recommendationEvents";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
+import VideoAdOverlay from "@/components/VideoAdOverlay";
 import { Eye, Clock, Share2, User, Bookmark, ChevronDown, ChevronUp, BadgeCheck } from "lucide-react";
 import VideoReactions from "@/components/VideoReactions";
 import SubscribeButton from "@/components/SubscribeButton";
@@ -478,6 +479,12 @@ const Watch = () => {
           >
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
+              <VideoAdOverlay
+                videoId={video.id}
+                category={video.category}
+                isMonetized={!!creator?.is_monetized}
+                isOwner={user?.id === video.user_id}
+              />
               <video
                 ref={videoRef}
                 src={video.video_url}

@@ -50,6 +50,14 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  const logEvent = async (row: Record<string, unknown>) => {
+    try {
+      await admin.from("stream_events").insert(row);
+    } catch (e) {
+      console.log("[replay] failed to log event", e);
+    }
+  };
+
   const { data: cred } = await admin
     .from("live_stream_credentials")
     .select("stream_id")
@@ -65,6 +73,14 @@ Deno.serve(async (req) => {
     : { data: null, error: new Error("unknown stream key") };
 
   if (error || !stream) {
+    await logEvent({
+      stream_id: null,
+      stream_key_hint: streamKey.slice(0, 6) + "…",
+      event_type: "replay_upload_failed",
+      status: "error",
+      error_message: "unknown stream key",
+      metadata: { video_url: videoUrl },
+    });
     return new Response(JSON.stringify({ error: "unknown stream key" }), {
       status: 403,
       headers: { ...cors, "content-type": "application/json" },
@@ -78,16 +94,18 @@ Deno.serve(async (req) => {
   }
 
   let videoId = stream.replay_video_id as string | null;
+  let opError: string | null = null;
 
   if (videoId) {
-    await admin.from("videos").update({
+    const { error: uErr } = await admin.from("videos").update({
       video_url: videoUrl,
       thumbnail_url: thumbnailUrl ?? stream.thumbnail_url,
       duration: duration || undefined,
       processing_status: "ready",
     }).eq("id", videoId);
+    opError = uErr?.message ?? null;
   } else {
-    const { data: inserted } = await admin.from("videos").insert({
+    const { data: inserted, error: iErr } = await admin.from("videos").insert({
       user_id: stream.creator_id,
       title: `${stream.title} — replay`,
       description: stream.description ?? null,
@@ -98,10 +116,26 @@ Deno.serve(async (req) => {
       visibility: stream.visibility === "public" ? "public" : "unlisted",
       processing_status: "ready",
     }).select("id").maybeSingle();
+    opError = iErr?.message ?? null;
     videoId = (inserted as any)?.id ?? null;
     if (videoId) {
       await admin.from("live_streams").update({ replay_video_id: videoId }).eq("id", stream.id);
     }
+  }
+
+  await logEvent({
+    stream_id: stream.id,
+    event_type: opError ? "replay_upload_failed" : "replay_uploaded",
+    status: opError ? "error" : "success",
+    error_message: opError,
+    metadata: { video_url: videoUrl, video_id: videoId, duration },
+  });
+
+  if (opError) {
+    return new Response(JSON.stringify({ error: opError }), {
+      status: 500,
+      headers: { ...cors, "content-type": "application/json" },
+    });
   }
 
   return new Response(JSON.stringify({ ok: true, video_id: videoId }), {
