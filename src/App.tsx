@@ -83,6 +83,8 @@ const App = () => (
                   <Route path="/live/:id" element={<LiveWatch />} />
                   <Route path="/studio/seo" element={<StudioSEO />} />
                   <Route path="/moderation" element={<Moderation />} />
+                  <Route path="/admin/monitoring" element={<Monitoring />} />
+                  <Route path="/ads" element={<AdsManager />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
