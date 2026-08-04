@@ -478,6 +478,12 @@ const Watch = () => {
           >
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
+              <VideoAdOverlay
+                videoId={video.id}
+                category={video.category}
+                isMonetized={!!creator?.is_monetized}
+                isOwner={user?.id === video.user_id}
+              />
               <video
                 ref={videoRef}
                 src={video.video_url}
