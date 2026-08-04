@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
 
   if (event === "publish_done" || event === "done") {
-    await admin
+    const { error: updErr } = await admin
       .from("live_streams")
       .update({
         status: "ended",
@@ -95,6 +95,13 @@ Deno.serve(async (req) => {
         hls_ready: false,
       })
       .eq("id", stream.id);
+    await logEvent({
+      stream_id: stream.id,
+      event_type: "ingest_publish_done",
+      status: updErr ? "error" : "success",
+      error_message: updErr?.message ?? null,
+      metadata: { addr: body.addr ?? null },
+    });
     return new Response("ok", { status: 200, headers: cors });
   }
 
@@ -109,7 +116,14 @@ Deno.serve(async (req) => {
     patch.playback_url = `${HLS_BASE_URL}/hls/${stream.id}/index.m3u8`;
   }
 
-  await admin.from("live_streams").update(patch).eq("id", stream.id);
+  const { error: pubErr } = await admin.from("live_streams").update(patch).eq("id", stream.id);
+  await logEvent({
+    stream_id: stream.id,
+    event_type: "ingest_publish",
+    status: pubErr ? "error" : "success",
+    error_message: pubErr?.message ?? null,
+    metadata: { addr: body.addr ?? null, playback_url: patch.playback_url ?? stream.playback_url },
+  });
 
   // Return the stream id so nginx can use it as the HLS output folder
   return new Response(stream.id, {
