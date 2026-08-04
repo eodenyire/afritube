@@ -35,6 +35,8 @@ const LiveWatch = lazy(() => import("./pages/LiveWatch.tsx"));
 const LiveStudio = lazy(() => import("./pages/LiveStudio.tsx"));
 const StudioSEO = lazy(() => import("./pages/StudioSEO.tsx"));
 const Moderation = lazy(() => import("./pages/Moderation.tsx"));
+const Monitoring = lazy(() => import("./pages/Monitoring.tsx"));
+const AdsManager = lazy(() => import("./pages/AdsManager.tsx"));
 
 const queryClient = new QueryClient();
 
