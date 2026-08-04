@@ -48,6 +48,14 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+  const logEvent = async (row: Record<string, unknown>) => {
+    try {
+      await admin.from("stream_events").insert(row);
+    } catch (e) {
+      console.log("[ingest-auth] failed to log event", e);
+    }
+  };
+
   const { data: cred } = await admin
     .from("live_stream_credentials")
     .select("stream_id")
@@ -64,6 +72,14 @@ Deno.serve(async (req) => {
 
   if (error || !stream) {
     console.log("[ingest-auth] reject: unknown key", { error });
+    await logEvent({
+      stream_id: null,
+      stream_key_hint: streamKey.slice(0, 6) + "…",
+      event_type: "ingest_auth_failed",
+      status: "error",
+      error_message: (error as Error)?.message ?? "unknown stream key",
+      metadata: { addr: body.addr ?? null, app: body.app ?? null, event },
+    });
     return new Response("invalid stream key", { status: 403, headers: cors });
   }
 
