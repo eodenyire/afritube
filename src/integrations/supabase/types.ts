@@ -14,6 +14,158 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_campaigns: {
+        Row: {
+          ad_type: string
+          advertiser_id: string
+          budget_cents: number
+          click_url: string | null
+          cpm_cents: number
+          created_at: string
+          creative_url: string
+          ends_at: string | null
+          headline: string | null
+          id: string
+          name: string
+          skip_after_seconds: number
+          spent_cents: number
+          starts_at: string
+          status: string
+          target_categories: string[]
+          updated_at: string
+        }
+        Insert: {
+          ad_type?: string
+          advertiser_id: string
+          budget_cents?: number
+          click_url?: string | null
+          cpm_cents?: number
+          created_at?: string
+          creative_url: string
+          ends_at?: string | null
+          headline?: string | null
+          id?: string
+          name: string
+          skip_after_seconds?: number
+          spent_cents?: number
+          starts_at?: string
+          status?: string
+          target_categories?: string[]
+          updated_at?: string
+        }
+        Update: {
+          ad_type?: string
+          advertiser_id?: string
+          budget_cents?: number
+          click_url?: string | null
+          cpm_cents?: number
+          created_at?: string
+          creative_url?: string
+          ends_at?: string | null
+          headline?: string | null
+          id?: string
+          name?: string
+          skip_after_seconds?: number
+          spent_cents?: number
+          starts_at?: string
+          status?: string
+          target_categories?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaigns_advertiser_id_fkey"
+            columns: ["advertiser_id"]
+            isOneToOne: false
+            referencedRelation: "advertisers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_events: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          creator_id: string | null
+          creator_share_cents: number
+          event_type: string
+          id: string
+          revenue_cents: number
+          video_id: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          creator_id?: string | null
+          creator_share_cents?: number
+          event_type?: string
+          id?: string
+          revenue_cents?: number
+          video_id?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string | null
+          creator_share_cents?: number
+          event_type?: string
+          id?: string
+          revenue_cents?: number
+          video_id?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      advertisers: {
+        Row: {
+          company_name: string
+          contact_email: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          company_name: string
+          contact_email: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          company_name?: string
+          contact_email?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       audio_tracks: {
         Row: {
           artist_name: string | null
@@ -480,6 +632,47 @@ export type Database = {
         }
         Relationships: []
       }
+      stream_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          status: string
+          stream_id: string | null
+          stream_key_hint: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          status?: string
+          stream_id?: string | null
+          stream_key_hint?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          status?: string
+          stream_id?: string | null
+          stream_key_hint?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_events_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_reactions: {
         Row: {
           created_at: string
@@ -703,6 +896,14 @@ export type Database = {
       }
       disable_creator_ads: { Args: never; Returns: boolean }
       enable_creator_ads: { Args: never; Returns: boolean }
+      get_creator_ad_earnings: {
+        Args: never
+        Returns: {
+          clicks: number
+          earnings_cents: number
+          impressions: number
+        }[]
+      }
       get_stream_key: { Args: { p_stream_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -712,6 +913,14 @@ export type Database = {
         Returns: boolean
       }
       increment_streams: { Args: { track_id: string }; Returns: undefined }
+      record_ad_event: {
+        Args: {
+          p_campaign_id: string
+          p_event_type: string
+          p_video_id: string
+        }
+        Returns: undefined
+      }
       remove_video_from_playlist: {
         Args: { p_playlist_id: string; p_video_id: string }
         Returns: undefined
@@ -725,6 +934,16 @@ export type Database = {
         Returns: undefined
       }
       rotate_stream_key: { Args: { p_stream_id: string }; Returns: string }
+      serve_ad: {
+        Args: { p_ad_type?: string; p_category?: string; p_video_id: string }
+        Returns: {
+          campaign_id: string
+          click_url: string
+          creative_url: string
+          headline: string
+          skip_after_seconds: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
