@@ -484,6 +484,8 @@ const Watch = () => {
                 category={video.category}
                 isMonetized={!!creator?.is_monetized}
                 isOwner={user?.id === video.user_id}
+                durationSeconds={video.duration}
+                playerRef={videoRef}
               />
               <video
                 ref={videoRef}
