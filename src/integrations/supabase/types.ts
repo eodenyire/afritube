@@ -904,6 +904,16 @@ export type Database = {
           impressions: number
         }[]
       }
+      get_creator_earnings: {
+        Args: never
+        Returns: {
+          ad_earnings_cents: number
+          clicks: number
+          impressions: number
+          super_chat_cents: number
+          total_cents: number
+        }[]
+      }
       get_stream_key: { Args: { p_stream_id: string }; Returns: string }
       has_role: {
         Args: {
