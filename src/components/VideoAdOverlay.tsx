@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ServedAd {
@@ -14,32 +14,78 @@ interface Props {
   category?: string | null;
   isMonetized: boolean;
   isOwner: boolean;
+  /** Duration of the host video in seconds — mid-rolls only run on long-form. */
+  durationSeconds?: number | null;
+  /** Host <video> element, used to pause/resume around ad breaks. */
+  playerRef?: React.RefObject<HTMLVideoElement>;
   onFinished?: () => void;
 }
 
-/** Pre-roll ad overlay shown before a monetized creator's video plays. */
-const VideoAdOverlay = ({ videoId, category, isMonetized, isOwner, onFinished }: Props) => {
+const MIDROLL_MIN_SECONDS = 480; // 8 minutes — mirrors serve_ad()
+
+/**
+ * Ad break overlay.
+ * Serving rules live in the `serve_ad` RPC (monetized creators only, no Shorts
+ * or sub-60s videos, one ad per viewer per video per 30 min, mid-roll only on
+ * videos over 8 minutes). This component just requests a break and renders it.
+ */
+const VideoAdOverlay = ({
+  videoId,
+  category,
+  isMonetized,
+  isOwner,
+  durationSeconds,
+  playerRef,
+  onFinished,
+}: Props) => {
   const [ad, setAd] = useState<ServedAd | null>(null);
   const [remaining, setRemaining] = useState(0);
-  const requested = useRef<string | null>(null);
+  const requested = useRef<Set<string>>(new Set());
+  const midrollPlayed = useRef(false);
 
-  useEffect(() => {
-    if (!isMonetized || isOwner || !videoId) return;
-    if (requested.current === videoId) return;
-    requested.current = videoId;
-    (async () => {
+  const requestAd = useCallback(
+    async (adType: "pre_roll" | "mid_roll") => {
+      if (!isMonetized || isOwner || !videoId) return;
+      const token = `${videoId}:${adType}`;
+      if (requested.current.has(token)) return;
+      requested.current.add(token);
+
       const { data } = await (supabase as any).rpc("serve_ad", {
         p_video_id: videoId,
         p_category: category ?? null,
-        p_ad_type: "pre_roll",
+        p_ad_type: adType,
       });
       const served = Array.isArray(data) ? data[0] : data;
       if (served?.creative_url) {
+        playerRef?.current?.pause();
         setAd(served as ServedAd);
         setRemaining(served.skip_after_seconds ?? 5);
       }
-    })();
-  }, [videoId, category, isMonetized, isOwner]);
+    },
+    [videoId, category, isMonetized, isOwner, playerRef],
+  );
+
+  // Pre-roll
+  useEffect(() => {
+    requestAd("pre_roll");
+  }, [requestAd]);
+
+  // Mid-roll at the halfway point of long-form videos
+  useEffect(() => {
+    const el = playerRef?.current;
+    if (!el) return;
+    if (!durationSeconds || durationSeconds < MIDROLL_MIN_SECONDS) return;
+
+    const onTime = () => {
+      if (midrollPlayed.current) return;
+      if (el.currentTime >= durationSeconds / 2) {
+        midrollPlayed.current = true;
+        requestAd("mid_roll");
+      }
+    };
+    el.addEventListener("timeupdate", onTime);
+    return () => el.removeEventListener("timeupdate", onTime);
+  }, [playerRef, durationSeconds, requestAd]);
 
   useEffect(() => {
     if (!ad) return;
@@ -51,6 +97,7 @@ const VideoAdOverlay = ({ videoId, category, isMonetized, isOwner, onFinished }:
 
   const close = () => {
     setAd(null);
+    playerRef?.current?.play().catch(() => undefined);
     onFinished?.();
   };
 
