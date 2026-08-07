@@ -51,6 +51,18 @@ Deno.serve(async (req) => {
   const logEvent = async (row: Record<string, unknown>) => {
     try {
       await admin.from("stream_events").insert(row);
+      if (row.status === "error") {
+        await admin.functions.invoke("stream-alert", {
+          body: {
+            event_type: row.event_type,
+            status: row.status,
+            stream_id: row.stream_id ?? null,
+            stream_key_hint: row.stream_key_hint ?? null,
+            error_message: row.error_message ?? null,
+            occurred_at: new Date().toISOString(),
+          },
+        });
+      }
     } catch (e) {
       console.log("[ingest-auth] failed to log event", e);
     }

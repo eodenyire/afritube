@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.stream-replay-uploaded]
 verify_jwt = false
+
+[functions.stream-alert]
+verify_jwt = false
