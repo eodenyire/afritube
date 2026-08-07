@@ -17,7 +17,7 @@ interface Props {
   /** Duration of the host video in seconds — mid-rolls only run on long-form. */
   durationSeconds?: number | null;
   /** Host <video> element, used to pause/resume around ad breaks. */
-  playerRef?: React.RefObject<HTMLVideoElement>;
+  playerEl?: HTMLVideoElement | null;
   onFinished?: () => void;
 }
 
@@ -35,7 +35,7 @@ const VideoAdOverlay = ({
   isMonetized,
   isOwner,
   durationSeconds,
-  playerRef,
+  playerEl,
   onFinished,
 }: Props) => {
   const [ad, setAd] = useState<ServedAd | null>(null);
@@ -57,12 +57,12 @@ const VideoAdOverlay = ({
       });
       const served = Array.isArray(data) ? data[0] : data;
       if (served?.creative_url) {
-        playerRef?.current?.pause();
+        playerEl?.pause();
         setAd(served as ServedAd);
         setRemaining(served.skip_after_seconds ?? 5);
       }
     },
-    [videoId, category, isMonetized, isOwner, playerRef],
+    [videoId, category, isMonetized, isOwner, playerEl],
   );
 
   // Pre-roll
@@ -72,7 +72,7 @@ const VideoAdOverlay = ({
 
   // Mid-roll at the halfway point of long-form videos
   useEffect(() => {
-    const el = playerRef?.current;
+    const el = playerEl;
     if (!el) return;
     if (!durationSeconds || durationSeconds < MIDROLL_MIN_SECONDS) return;
 
@@ -85,7 +85,7 @@ const VideoAdOverlay = ({
     };
     el.addEventListener("timeupdate", onTime);
     return () => el.removeEventListener("timeupdate", onTime);
-  }, [playerRef, durationSeconds, requestAd]);
+  }, [playerEl, durationSeconds, requestAd]);
 
   useEffect(() => {
     if (!ad) return;
@@ -97,7 +97,7 @@ const VideoAdOverlay = ({
 
   const close = () => {
     setAd(null);
-    playerRef?.current?.play().catch(() => undefined);
+    playerEl?.play().catch(() => undefined);
     onFinished?.();
   };
 
