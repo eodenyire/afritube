@@ -19,6 +19,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import EditProfileDialog from "@/components/EditProfileDialog";
+import { formatCents } from "@/lib/earnings";
+
+interface CreatorEarnings {
+  impressions: number;
+  clicks: number;
+  ad_earnings_cents: number;
+  super_chat_cents: number;
+  total_cents: number;
+}
 
 interface VideoItem {
   id: string;
@@ -114,6 +123,7 @@ const Dashboard = () => {
   const [premiumActionLoading, setPremiumActionLoading] = useState<"" | "monthly" | "yearly" | "cancel">("");
   const [recommendationCategorySignals, setRecommendationCategorySignals] = useState<Record<string, number>>({});
   const [lastAnalyticsUpdatedAt, setLastAnalyticsUpdatedAt] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<CreatorEarnings | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -186,6 +196,23 @@ const Dashboard = () => {
     if (!user) return;
     fetchRecommendationStats();
   }, [user, fetchRecommendationStats]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await (supabase as any).rpc("get_creator_earnings");
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) {
+        setEarnings({
+          impressions: Number(row.impressions ?? 0),
+          clicks: Number(row.clicks ?? 0),
+          ad_earnings_cents: Number(row.ad_earnings_cents ?? 0),
+          super_chat_cents: Number(row.super_chat_cents ?? 0),
+          total_cents: Number(row.total_cents ?? 0),
+        });
+      }
+    })();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -580,6 +607,27 @@ const Dashboard = () => {
                   <Progress value={watchHoursProgress} className="h-2.5" />
                 </div>
               </div>
+
+              {earnings && (
+                <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-secondary/60 p-3">
+                    <p className="text-xs text-muted-foreground">Ad impressions</p>
+                    <p className="text-lg font-semibold text-foreground">{earnings.impressions.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/60 p-3">
+                    <p className="text-xs text-muted-foreground">Ad earnings (55%)</p>
+                    <p className="text-lg font-semibold text-foreground">{formatCents(earnings.ad_earnings_cents)}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/60 p-3">
+                    <p className="text-xs text-muted-foreground">Super chats (70%)</p>
+                    <p className="text-lg font-semibold text-foreground">{formatCents(earnings.super_chat_cents)}</p>
+                  </div>
+                  <div className="rounded-lg bg-primary/10 p-3">
+                    <p className="text-xs text-muted-foreground">Total earnings</p>
+                    <p className="text-lg font-semibold text-primary">{formatCents(earnings.total_cents)}</p>
+                  </div>
+                </div>
+              )}
               <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
                 {!isEligible ? (
                   <p className="text-xs text-muted-foreground">
