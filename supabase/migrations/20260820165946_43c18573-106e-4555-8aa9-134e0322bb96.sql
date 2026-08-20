@@ -1,0 +1,4 @@
+CREATE POLICY "Ad creatives are readable" ON storage.objects FOR SELECT USING (bucket_id = 'ad-creatives');
+CREATE POLICY "Advertisers upload own creatives" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'ad-creatives' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "Advertisers update own creatives" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'ad-creatives' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "Advertisers delete own creatives" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'ad-creatives' AND (storage.foldername(name))[1] = auth.uid()::text);
