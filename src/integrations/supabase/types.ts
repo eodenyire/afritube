@@ -27,6 +27,8 @@ export type Database = {
           headline: string | null
           id: string
           name: string
+          review_note: string | null
+          reviewed_at: string | null
           skip_after_seconds: number
           spent_cents: number
           starts_at: string
@@ -46,6 +48,8 @@ export type Database = {
           headline?: string | null
           id?: string
           name: string
+          review_note?: string | null
+          reviewed_at?: string | null
           skip_after_seconds?: number
           spent_cents?: number
           starts_at?: string
@@ -65,6 +69,8 @@ export type Database = {
           headline?: string | null
           id?: string
           name?: string
+          review_note?: string | null
+          reviewed_at?: string | null
           skip_after_seconds?: number
           spent_cents?: number
           starts_at?: string
@@ -133,11 +139,92 @@ export type Database = {
           },
         ]
       }
+      advertiser_credit_transactions: {
+        Row: {
+          advertiser_id: string
+          amount_cents: number
+          created_at: string
+          id: string
+          kind: string
+          reference: string | null
+        }
+        Insert: {
+          advertiser_id: string
+          amount_cents: number
+          created_at?: string
+          id?: string
+          kind?: string
+          reference?: string | null
+        }
+        Update: {
+          advertiser_id?: string
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advertiser_credit_transactions_advertiser_id_fkey"
+            columns: ["advertiser_id"]
+            isOneToOne: false
+            referencedRelation: "advertisers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      advertiser_notifications: {
+        Row: {
+          advertiser_id: string
+          body: string | null
+          campaign_id: string | null
+          created_at: string
+          id: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          advertiser_id: string
+          body?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          advertiser_id?: string
+          body?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advertiser_notifications_advertiser_id_fkey"
+            columns: ["advertiser_id"]
+            isOneToOne: false
+            referencedRelation: "advertisers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advertiser_notifications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advertisers: {
         Row: {
           company_name: string
           contact_email: string
           created_at: string
+          credits_cents: number
           id: string
           status: string
           updated_at: string
@@ -148,6 +235,7 @@ export type Database = {
           company_name: string
           contact_email: string
           created_at?: string
+          credits_cents?: number
           id?: string
           status?: string
           updated_at?: string
@@ -158,6 +246,7 @@ export type Database = {
           company_name?: string
           contact_email?: string
           created_at?: string
+          credits_cents?: number
           id?: string
           status?: string
           updated_at?: string
@@ -868,6 +957,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_advertiser_credits: {
+        Args: { p_amount_cents: number; p_reference?: string }
+        Returns: number
+      }
       add_video_to_playlist: {
         Args: { p_playlist_id: string; p_video_id: string }
         Returns: undefined
@@ -896,6 +989,19 @@ export type Database = {
       }
       disable_creator_ads: { Args: never; Returns: boolean }
       enable_creator_ads: { Args: never; Returns: boolean }
+      get_advertiser_campaign_analytics: {
+        Args: never
+        Returns: {
+          budget_cents: number
+          campaign_id: string
+          campaign_name: string
+          clicks: number
+          impressions: number
+          spend_cents: number
+          status: string
+          videos_reached: number
+        }[]
+      }
       get_creator_ad_earnings: {
         Args: never
         Returns: {
@@ -941,6 +1047,10 @@ export type Database = {
           p_playlist_id: string
           p_video_id: string
         }
+        Returns: undefined
+      }
+      review_ad_campaign: {
+        Args: { p_approve: boolean; p_campaign_id: string; p_note?: string }
         Returns: undefined
       }
       rotate_stream_key: { Args: { p_stream_id: string }; Returns: string }
