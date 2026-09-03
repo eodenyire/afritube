@@ -87,6 +87,7 @@ const Navbar = () => {
     { label: "Music", href: "/#music" },
     { label: "Blogs", href: "/#blogs" },
     { label: "Creators", href: "/#creators" },
+    { label: "Advertise", href: "/advertise" },
     ...(user ? [{ label: "Subscriptions", href: "/subscriptions" }] : []),
   ];
 
