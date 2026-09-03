@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import AdvertiserBilling from "@/components/AdvertiserBilling";
 
 interface Advertiser {
   id: string;
@@ -21,6 +22,9 @@ interface Advertiser {
   contact_email: string;
   website: string | null;
   status: string;
+  credits_cents: number;
+  low_balance_threshold_cents: number;
+  low_balance_email_alerts: boolean;
 }
 
 interface Campaign {
@@ -233,6 +237,14 @@ const AdsManager = () => {
                 </CardContent>
               </Card>
             </div>
+
+            <AdvertiserBilling
+              advertiserId={advertiser.id}
+              creditsCents={advertiser.credits_cents ?? 0}
+              thresholdCents={advertiser.low_balance_threshold_cents ?? 1000}
+              emailAlerts={advertiser.low_balance_email_alerts ?? false}
+              onRefresh={load}
+            />
 
             <Card>
               <CardHeader>
