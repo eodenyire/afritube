@@ -226,6 +226,9 @@ export type Database = {
           created_at: string
           credits_cents: number
           id: string
+          low_balance_email_alerts: boolean
+          low_balance_notified_at: string | null
+          low_balance_threshold_cents: number
           status: string
           updated_at: string
           user_id: string
@@ -237,6 +240,9 @@ export type Database = {
           created_at?: string
           credits_cents?: number
           id?: string
+          low_balance_email_alerts?: boolean
+          low_balance_notified_at?: string | null
+          low_balance_threshold_cents?: number
           status?: string
           updated_at?: string
           user_id: string
@@ -248,6 +254,9 @@ export type Database = {
           created_at?: string
           credits_cents?: number
           id?: string
+          low_balance_email_alerts?: boolean
+          low_balance_notified_at?: string | null
+          low_balance_threshold_cents?: number
           status?: string
           updated_at?: string
           user_id?: string
@@ -989,6 +998,16 @@ export type Database = {
       }
       disable_creator_ads: { Args: never; Returns: boolean }
       enable_creator_ads: { Args: never; Returns: boolean }
+      get_advertiser_billing_statement: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          clicks: number
+          impressions: number
+          spend_cents: number
+        }[]
+      }
       get_advertiser_campaign_analytics: {
         Args: never
         Returns: {
@@ -1000,6 +1019,15 @@ export type Database = {
           spend_cents: number
           status: string
           videos_reached: number
+        }[]
+      }
+      get_advertiser_ledger: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          kind: string
+          reference: string
         }[]
       }
       get_creator_ad_earnings: {
@@ -1029,6 +1057,10 @@ export type Database = {
         Returns: boolean
       }
       increment_streams: { Args: { track_id: string }; Returns: undefined }
+      notify_low_balance: {
+        Args: { p_advertiser_id: string }
+        Returns: undefined
+      }
       record_ad_event: {
         Args: {
           p_campaign_id: string
