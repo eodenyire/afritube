@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveCreativeUrl } from "@/lib/adCreative";
 
 interface ServedAd {
   campaign_id: string;
@@ -57,7 +58,10 @@ const VideoAdOverlay = ({
       });
       const served = Array.isArray(data) ? data[0] : data;
       if (served?.creative_url) {
+        const src = await resolveCreativeUrl(served.creative_url);
+        if (!src) return;
         playerEl?.pause();
+        setCreativeSrc(src);
         setAd(served as ServedAd);
         setRemaining(served.skip_after_seconds ?? 5);
       }
