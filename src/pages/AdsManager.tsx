@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Megaphone, Plus } from "lucide-react";
+import { Loader2, Megaphone, Plus, Upload } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AdvertiserBilling from "@/components/AdvertiserBilling";
+import AdvertiserAnalytics from "@/components/AdvertiserAnalytics";
+import { checkCreative, uploadCreative } from "@/lib/adCreative";
 
 interface Advertiser {
   id: string;
@@ -53,6 +55,10 @@ const AdsManager = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [creativeName, setCreativeName] = useState("");
 
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
@@ -271,11 +277,38 @@ const AdsManager = () => {
                   </Select>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Creative URL (mp4 or image)</Label>
+                  <Label>Ad creative</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => handleCreativeFile(e.target.files?.[0] ?? null)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                      Upload creative
+                    </Button>
+                    {form.creative_url && (
+                      <span className="text-sm text-muted-foreground truncate max-w-[240px]">
+                        {creativeName || form.creative_url}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    MP4, WebM or MOV video (3–60 seconds) or a JPG, PNG or WebP image. Max 50 MB.
+                  </p>
                   <Input
                     value={form.creative_url}
                     onChange={(e) => setForm({ ...form, creative_url: e.target.value })}
-                    placeholder="https://..."
+                    placeholder="…or paste a hosted creative URL"
                   />
                 </div>
                 <div className="space-y-1.5">

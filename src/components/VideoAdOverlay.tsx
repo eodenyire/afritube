@@ -153,7 +153,7 @@ const VideoAdOverlay = ({
           type="button"
           onClick={close}
           disabled={remaining > 0}
-          className="text-xs rounded-full px-3 py-1 bg-white/15 text-white disabled:opacity-60"
+          className="text-xs rounded-full px-3 py-1 bg-muted/30 text-primary-foreground disabled:opacity-60"
         >
           {remaining > 0 ? `Skip in ${remaining}s` : "Skip ad"}
         </button>
