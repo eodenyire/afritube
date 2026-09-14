@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveCreativeUrl } from "@/lib/adCreative";
 
 interface ServedAd {
   campaign_id: string;
@@ -39,6 +40,8 @@ const VideoAdOverlay = ({
   onFinished,
 }: Props) => {
   const [ad, setAd] = useState<ServedAd | null>(null);
+  const [creativeSrc, setCreativeSrc] = useState<string | null>(null);
+  const [muted, setMuted] = useState(true);
   const [remaining, setRemaining] = useState(0);
   const requested = useRef<Set<string>>(new Set());
   const midrollPlayed = useRef(false);
@@ -57,7 +60,10 @@ const VideoAdOverlay = ({
       });
       const served = Array.isArray(data) ? data[0] : data;
       if (served?.creative_url) {
+        const src = await resolveCreativeUrl(served.creative_url);
+        if (!src) return;
         playerEl?.pause();
+        setCreativeSrc(src);
         setAd(served as ServedAd);
         setRemaining(served.skip_after_seconds ?? 5);
       }
@@ -93,10 +99,11 @@ const VideoAdOverlay = ({
     return () => clearInterval(t);
   }, [ad]);
 
-  if (!ad) return null;
+  if (!ad || !creativeSrc) return null;
 
   const close = () => {
     setAd(null);
+    setCreativeSrc(null);
     playerEl?.play().catch(() => undefined);
     onFinished?.();
   };
@@ -117,26 +124,36 @@ const VideoAdOverlay = ({
       <button type="button" onClick={handleClick} className="flex-1 min-h-0 w-full">
         {isVideoCreative ? (
           <video
-            src={ad.creative_url}
+            src={creativeSrc}
             autoPlay
-            muted
+            muted={muted}
             playsInline
             onEnded={close}
             className="w-full h-full object-contain"
           />
         ) : (
-          <img src={ad.creative_url} alt={ad.headline ?? "Advertisement"} className="w-full h-full object-contain" />
+          <img src={creativeSrc} alt={ad.headline ?? "Advertisement"} className="w-full h-full object-contain" />
         )}
       </button>
       <div className="flex items-center justify-between gap-3 px-3 py-2 bg-black/80">
-        <span className="text-xs text-white/70 truncate">
+        <span className="text-xs text-primary-foreground/70 truncate">
           Ad · {ad.headline ?? "Sponsored"}
+          {ad.click_url ? " · Tap to visit advertiser" : ""}
         </span>
+        {isVideoCreative && (
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            className="text-xs rounded-full px-3 py-1 bg-muted/30 text-primary-foreground"
+          >
+            {muted ? "Unmute" : "Mute"}
+          </button>
+        )}
         <button
           type="button"
           onClick={close}
           disabled={remaining > 0}
-          className="text-xs rounded-full px-3 py-1 bg-white/15 text-white disabled:opacity-60"
+          className="text-xs rounded-full px-3 py-1 bg-muted/30 text-primary-foreground disabled:opacity-60"
         >
           {remaining > 0 ? `Skip in ${remaining}s` : "Skip ad"}
         </button>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import AdminCampaignReview from "@/components/AdminCampaignReview";
 
 interface CreatorProfile {
   user_id: string;
@@ -328,6 +329,8 @@ const Admin = () => {
                 <CardContent className="text-2xl font-semibold">{formatNumber(summary.totalLikes)}</CardContent>
               </Card>
             </div>
+
+            <AdminCampaignReview />
 
             <Card className="mb-8 border-primary/40">
               <CardHeader>
