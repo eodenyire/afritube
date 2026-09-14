@@ -121,6 +121,27 @@ const AdsManager = () => {
     load();
   };
 
+  const handleCreativeFile = async (file: File | null) => {
+    if (!file || !advertiser) return;
+    setUploading(true);
+    const check = await checkCreative(file);
+    if (!check.ok) {
+      setUploading(false);
+      toast({ title: "Creative rejected", description: check.reason, variant: "destructive" });
+      return;
+    }
+    try {
+      const path = await uploadCreative(advertiser.id, file);
+      setForm((f) => ({ ...f, creative_url: path }));
+      setCreativeName(file.name);
+      toast({ title: "Creative uploaded", description: "It will be checked again during review." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const createCampaign = async () => {
     if (!advertiser) return;
     if (!form.name.trim() || !form.creative_url.trim()) {
@@ -251,6 +272,8 @@ const AdsManager = () => {
               emailAlerts={advertiser.low_balance_email_alerts ?? false}
               onRefresh={load}
             />
+
+            <AdvertiserAnalytics refreshKey={campaigns.length} />
 
             <Card>
               <CardHeader>
