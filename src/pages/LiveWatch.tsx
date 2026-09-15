@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Hls from "hls.js";
 import { Circle, DollarSign, Radio, Send, Users } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import LiveAdOverlay from "@/components/LiveAdOverlay";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,8 @@ const LiveWatch = () => {
 
   const [stream, setStream] = useState<LiveStream | null>(null);
   const [creatorName, setCreatorName] = useState<string>("Creator");
+  const [creatorMonetized, setCreatorMonetized] = useState(false);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [superAmount, setSuperAmount] = useState("5");
@@ -95,10 +98,11 @@ const LiveWatch = () => {
       setStream(data as LiveStream);
       const { data: profile } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, is_monetized")
         .eq("user_id", data.creator_id)
         .maybeSingle();
       setCreatorName((profile as any)?.display_name ?? "Creator");
+      setCreatorMonetized(!!(profile as any)?.is_monetized);
       setLoading(false);
     };
     load();
@@ -368,7 +372,24 @@ const LiveWatch = () => {
         <section className="lg:col-span-2 space-y-4">
           <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-border">
             {showPlayer ? (
-              <video ref={videoRef} className="w-full h-full object-contain" controls autoPlay playsInline />
+              <>
+                <video
+                  ref={(el) => {
+                    videoRef.current = el;
+                    setVideoEl(el);
+                  }}
+                  className="w-full h-full object-contain"
+                  controls
+                  autoPlay
+                  playsInline
+                />
+                <LiveAdOverlay
+                  streamId={stream.id}
+                  isMonetized={creatorMonetized}
+                  isOwner={!!isOwner}
+                  playerEl={videoEl}
+                />
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 gap-3">
                 {stream.thumbnail_url && (
