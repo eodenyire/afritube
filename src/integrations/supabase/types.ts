@@ -1048,6 +1048,37 @@ export type Database = {
           total_cents: number
         }[]
       }
+      get_live_ad_overview: {
+        Args: never
+        Returns: {
+          ad_type: string
+          advertiser_name: string
+          budget_cents: number
+          campaign_id: string
+          campaign_name: string
+          clicks_total: number
+          cpm_cents: number
+          impressions_last_hour: number
+          impressions_total: number
+          live_impressions_last_hour: number
+          midroll_impressions_last_hour: number
+          spent_cents: number
+          status: string
+        }[]
+      }
+      get_live_ad_placements: {
+        Args: never
+        Returns: {
+          creator_id: string
+          creator_name: string
+          duration: number
+          impressions_last_hour: number
+          is_live: boolean
+          midroll_eligible: boolean
+          title: string
+          video_id: string
+        }[]
+      }
       get_stream_key: { Args: { p_stream_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1088,6 +1119,16 @@ export type Database = {
       rotate_stream_key: { Args: { p_stream_id: string }; Returns: string }
       serve_ad: {
         Args: { p_ad_type?: string; p_category?: string; p_video_id: string }
+        Returns: {
+          campaign_id: string
+          click_url: string
+          creative_url: string
+          headline: string
+          skip_after_seconds: number
+        }[]
+      }
+      serve_live_ad: {
+        Args: { p_ad_type?: string; p_category?: string; p_stream_id: string }
         Returns: {
           campaign_id: string
           click_url: string
