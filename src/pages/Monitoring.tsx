@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import LiveAdDashboard from "@/components/LiveAdDashboard";
 
 interface StreamEvent {
   id: string;
@@ -240,12 +241,16 @@ const Monitoring = () => {
               <TabsList>
                 <TabsTrigger value="failures">Failures ({failures.length})</TabsTrigger>
                 <TabsTrigger value="all">All events</TabsTrigger>
+                <TabsTrigger value="ads">Live ads</TabsTrigger>
               </TabsList>
               <TabsContent value="failures" className="mt-4">
                 {renderTable(failures)}
               </TabsContent>
               <TabsContent value="all" className="mt-4">
                 {renderTable(events)}
+              </TabsContent>
+              <TabsContent value="ads" className="mt-4">
+                <LiveAdDashboard />
               </TabsContent>
             </Tabs>
           </CardContent>
