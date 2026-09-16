@@ -165,6 +165,18 @@ const CreatorProfile = () => {
     load();
   }, [userId, user?.id, isAdmin]);
 
+  const toggleAds = async (enable: boolean) => {
+    setTogglingAds(true);
+    const { error } = await supabase.rpc(enable ? "enable_creator_ads" : "disable_creator_ads");
+    if (error) {
+      toast({ title: enable ? "Could not enable ads" : "Could not pause ads", description: error.message, variant: "destructive" });
+    } else {
+      setProfile((p) => (p ? { ...p, is_monetized: enable } : p));
+      toast({ title: enable ? "Ads enabled — start earning!" : "Ads paused" });
+    }
+    setTogglingAds(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
