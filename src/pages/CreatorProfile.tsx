@@ -59,6 +59,9 @@ const formatCount = (n: number) => {
   return n.toString();
 };
 
+const formatHours = (n: number) =>
+  n >= 100 ? Math.round(n).toLocaleString() : n.toFixed(1);
+
 const timeAgo = (dateStr: string) => {
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
   if (days > 365) return `${Math.floor(days / 365)}y ago`;
