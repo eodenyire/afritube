@@ -20,6 +20,7 @@ interface Profile {
   avatar_url: string | null;
   bio: string | null;
   subscriber_count?: number;
+  watch_hours?: number;
   is_monetized?: boolean;
   is_creator?: boolean;
   created_at: string;
@@ -75,6 +76,7 @@ const CreatorProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [audio, setAudio] = useState<AudioTrack[]>([]);
@@ -82,6 +84,7 @@ const CreatorProfile = () => {
   const [playlists, setPlaylists] = useState<(Playlist & { video_count: number })[]>([]);
   const [liveStreamId, setLiveStreamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [togglingAds, setTogglingAds] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -90,7 +93,7 @@ const CreatorProfile = () => {
       const nowIso = new Date().toISOString();
       const canViewEligibility = isAdmin || user?.id === userId;
       const profileSelect = canViewEligibility
-        ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, is_creator, created_at"
+        ? "user_id, display_name, avatar_url, bio, subscriber_count, watch_hours, is_monetized, is_creator, created_at"
         : "user_id, display_name, avatar_url, bio, is_creator, created_at";
       const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }, { data: pls }] =
         await Promise.all([
