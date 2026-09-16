@@ -304,7 +304,7 @@ const CreatorProfile = () => {
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-muted-foreground">Watch hours</span>
-                  <span className="font-medium text-foreground">{profile.watch_hours ?? 0} / 1,000</span>
+                  <span className="font-medium text-foreground">{formatHours(profile.watch_hours ?? 0)} / 1,000</span>
                 </div>
                 <Progress value={Math.min(((profile.watch_hours ?? 0) / 1000) * 100, 100)} className="h-2" />
               </div>
