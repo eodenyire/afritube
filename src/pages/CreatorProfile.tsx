@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SubscribeButton from "@/components/SubscribeButton";
-import { User, Eye, Clock, Play, Music, BookOpen, ListVideo, BadgeCheck, Radio } from "lucide-react";
+import { User, Eye, Play, Music, BookOpen, ListVideo, BadgeCheck, Radio, DollarSign, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import PlaylistCard from "@/components/PlaylistCard";
 import type { Playlist } from "@/hooks/usePlaylist";
@@ -17,6 +20,7 @@ interface Profile {
   avatar_url: string | null;
   bio: string | null;
   subscriber_count?: number;
+  watch_hours?: number;
   is_monetized?: boolean;
   is_creator?: boolean;
   created_at: string;
@@ -55,6 +59,9 @@ const formatCount = (n: number) => {
   return n.toString();
 };
 
+const formatHours = (n: number) =>
+  n >= 100 ? Math.round(n).toLocaleString() : n.toFixed(1);
+
 const timeAgo = (dateStr: string) => {
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
   if (days > 365) return `${Math.floor(days / 365)}y ago`;
@@ -72,6 +79,7 @@ const CreatorProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [audio, setAudio] = useState<AudioTrack[]>([]);
@@ -79,6 +87,7 @@ const CreatorProfile = () => {
   const [playlists, setPlaylists] = useState<(Playlist & { video_count: number })[]>([]);
   const [liveStreamId, setLiveStreamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [togglingAds, setTogglingAds] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -87,7 +96,7 @@ const CreatorProfile = () => {
       const nowIso = new Date().toISOString();
       const canViewEligibility = isAdmin || user?.id === userId;
       const profileSelect = canViewEligibility
-        ? "user_id, display_name, avatar_url, bio, subscriber_count, is_monetized, is_creator, created_at"
+        ? "user_id, display_name, avatar_url, bio, subscriber_count, watch_hours, is_monetized, is_creator, created_at"
         : "user_id, display_name, avatar_url, bio, is_creator, created_at";
       const [{ data: prof }, { data: vids }, { data: tracks }, { data: posts }, { data: pls }] =
         await Promise.all([
@@ -158,6 +167,18 @@ const CreatorProfile = () => {
     };
     load();
   }, [userId, user?.id, isAdmin]);
+
+  const toggleAds = async (enable: boolean) => {
+    setTogglingAds(true);
+    const { error } = await supabase.rpc(enable ? "enable_creator_ads" : "disable_creator_ads");
+    if (error) {
+      toast({ title: enable ? "Could not enable ads" : "Could not pause ads", description: error.message, variant: "destructive" });
+    } else {
+      setProfile((p) => (p ? { ...p, is_monetized: enable } : p));
+      toast({ title: enable ? "Ads enabled — start earning!" : "Ads paused" });
+    }
+    setTogglingAds(false);
+  };
 
   if (loading) {
     return (
@@ -259,6 +280,67 @@ const CreatorProfile = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Monetization controls — visible only to the profile owner (and admins) */}
+        {user?.id === profile.user_id && (
+          <div className="mb-8 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign size={16} className="text-primary" />
+              <h2 className="font-display font-semibold text-foreground">Monetization</h2>
+              {profile.is_monetized && (
+                <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Subscribers</span>
+                  <span className="font-medium text-foreground">{profile.subscriber_count ?? 0} / 100</span>
+                </div>
+                <Progress value={Math.min(((profile.subscriber_count ?? 0) / 100) * 100, 100)} className="h-2" />
+              </div>
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Watch hours</span>
+                  <span className="font-medium text-foreground">{formatHours(profile.watch_hours ?? 0)} / 1,000</span>
+                </div>
+                <Progress value={Math.min(((profile.watch_hours ?? 0) / 1000) * 100, 100)} className="h-2" />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {profile.is_monetized ? (
+                <>
+                  <p className="text-xs text-muted-foreground flex-1">
+                    Ads are running on your videos and live streams. Pause anytime.
+                  </p>
+                  <Button variant="outline" size="sm" className="rounded-full" disabled={togglingAds} onClick={() => toggleAds(false)}>
+                    {togglingAds && <Loader2 size={14} className="mr-1 animate-spin" />}
+                    Pause ads
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground flex-1">
+                    {((profile.subscriber_count ?? 0) >= 100 && (profile.watch_hours ?? 0) >= 1000)
+                      ? "You're eligible! Turn on ads to start earning from your content."
+                      : "Reach 100 subscribers and 1,000 watch hours to start earning from ads."}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90"
+                    disabled={togglingAds}
+                    onClick={() => toggleAds(true)}
+                  >
+                    {togglingAds ? <Loader2 size={14} className="mr-1 animate-spin" /> : <DollarSign size={14} className="mr-1" />}
+                    Enable ads
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Content Tabs */}
         <Tabs defaultValue="videos" className="w-full">
