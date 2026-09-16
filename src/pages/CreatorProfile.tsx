@@ -278,6 +278,67 @@ const CreatorProfile = () => {
           </div>
         </motion.div>
 
+        {/* Monetization controls — visible only to the profile owner (and admins) */}
+        {user?.id === profile.user_id && (
+          <div className="mb-8 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign size={16} className="text-primary" />
+              <h2 className="font-display font-semibold text-foreground">Monetization</h2>
+              {profile.is_monetized && (
+                <span className="bg-gradient-gold text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Subscribers</span>
+                  <span className="font-medium text-foreground">{profile.subscriber_count ?? 0} / 100</span>
+                </div>
+                <Progress value={Math.min(((profile.subscriber_count ?? 0) / 100) * 100, 100)} className="h-2" />
+              </div>
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Watch hours</span>
+                  <span className="font-medium text-foreground">{profile.watch_hours ?? 0} / 1,000</span>
+                </div>
+                <Progress value={Math.min(((profile.watch_hours ?? 0) / 1000) * 100, 100)} className="h-2" />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {profile.is_monetized ? (
+                <>
+                  <p className="text-xs text-muted-foreground flex-1">
+                    Ads are running on your videos and live streams. Pause anytime.
+                  </p>
+                  <Button variant="outline" size="sm" className="rounded-full" disabled={togglingAds} onClick={() => toggleAds(false)}>
+                    {togglingAds && <Loader2 size={14} className="mr-1 animate-spin" />}
+                    Pause ads
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground flex-1">
+                    {((profile.subscriber_count ?? 0) >= 100 && (profile.watch_hours ?? 0) >= 1000)
+                      ? "You're eligible! Turn on ads to start earning from your content."
+                      : "Reach 100 subscribers and 1,000 watch hours to start earning from ads."}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-gradient-gold text-primary-foreground hover:opacity-90"
+                    disabled={togglingAds}
+                    onClick={() => toggleAds(true)}
+                  >
+                    {togglingAds ? <Loader2 size={14} className="mr-1 animate-spin" /> : <DollarSign size={14} className="mr-1" />}
+                    Enable ads
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Content Tabs */}
         <Tabs defaultValue="videos" className="w-full">
           <TabsList className="w-full justify-start bg-card border border-border rounded-xl mb-6 overflow-x-auto">
