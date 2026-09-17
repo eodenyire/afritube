@@ -606,6 +606,48 @@ export type Database = {
           },
         ]
       }
+      monetization_applications: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subscriber_count_at_apply: number
+          updated_at: string
+          user_id: string
+          watch_hours_at_apply: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subscriber_count_at_apply?: number
+          updated_at?: string
+          user_id: string
+          watch_hours_at_apply?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subscriber_count_at_apply?: number
+          updated_at?: string
+          user_id?: string
+          watch_hours_at_apply?: number
+        }
+        Relationships: []
+      }
       playlist_items: {
         Row: {
           added_at: string
@@ -983,6 +1025,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_for_monetization: { Args: { _note?: string }; Returns: string }
       check_monetization_eligibility: {
         Args: { p_user_id: string }
         Returns: boolean
@@ -1030,6 +1073,7 @@ export type Database = {
           reference: string
         }[]
       }
+      get_creator_ad_dashboard: { Args: never; Returns: Json }
       get_creator_ad_earnings: {
         Args: never
         Returns: {
@@ -1088,6 +1132,25 @@ export type Database = {
         Returns: boolean
       }
       increment_streams: { Args: { track_id: string }; Returns: undefined }
+      list_monetization_applications: {
+        Args: { _status?: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          id: string
+          is_monetized: boolean
+          note: string
+          review_note: string
+          reviewed_at: string
+          status: string
+          subscriber_count: number
+          subscriber_count_at_apply: number
+          user_id: string
+          watch_hours: number
+          watch_hours_at_apply: number
+        }[]
+      }
       notify_low_balance: {
         Args: { p_advertiser_id: string }
         Returns: undefined
@@ -1115,6 +1178,10 @@ export type Database = {
       review_ad_campaign: {
         Args: { p_approve: boolean; p_campaign_id: string; p_note?: string }
         Returns: undefined
+      }
+      review_monetization_application: {
+        Args: { _application_id: string; _approve: boolean; _note?: string }
+        Returns: boolean
       }
       rotate_stream_key: { Args: { p_stream_id: string }; Returns: string }
       serve_ad: {
